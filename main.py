@@ -2,8 +2,7 @@ from gurobipy import *
 import gurobipy as gu
 import pandas as pd
 import itertools
-from time import process_time
-
+import time
 
 # Create DF out of Sets
 I_list = [1,2,3]
@@ -70,10 +69,13 @@ class MasterProblem:
         obj = self.model.objVal
         return obj
 
-    def addColumn(self, objective, newSchedule):
-        ctName = ('ScheduleUseVar[%s]' %len(self.model.getVars()))
-        newColumn = gu.column(newSchedule, self.model.getConstrs())
-        self.model.addVar(vtype = gu.GBR.INTEGER, lb = 0, obj = objective, column = newColumn, name = ctName)
+    def updateModel(self):
+        self.model.update()
+
+    def addColumn(self, newSchedule, iter, i):
+        ctName = f"ScheduleUsed[{i},{iter}]"
+        newColumn = gu.Column(newSchedule, self.model.getConstrs())
+        self.model.addVar(vtype=gu.GBR.CONTINOUS, lb=0, obj=1.0, column=newColumn, name=ctName)
         self.model.update()
 
     def setStartSolution(self):
@@ -86,8 +88,13 @@ class MasterProblem:
     def modelFlags(self):
         self.model.Params.OutputFlag = 0
 
+    def solveModel(self, timeLimit, EPS):
+        self.model.setParam('TimeLimit', timeLimit)
+        self.model.setParam('MIPGap', EPS)
+        self.model.optimize()
+
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, dfData):
+    def __init__(self, duals_i, duals_ts, dfData, i):
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
@@ -96,6 +103,7 @@ class Subproblem:
         self.M = 100
         self.alpha = 0.5
         self.model = gu.Model("Subproblem")
+        self.i = i
 
     def buildModel(self):
         self.generateVariables()
@@ -122,60 +130,81 @@ class Subproblem:
                 self.model.addConstr(self.motivation[t, s] <= self.x[t, s])
 
     def generateObjective(self):
-        self.model.setObjective(-gu.quicksum(self.motivation[t,s]*self.duals_ts[t,s] for t in self.days for s in self.shifts)-self.duals_i[i], sense = gu.GRB.MINIMIZE)
+        self.model.setObjective(0-gu.quicksum(self.motivation[t,s]*self.duals_ts[t,s] for t in self.days for s in self.shifts)-self.duals_i[self.i], sense = gu.GRB.MINIMIZE)
 
     def getNewSchedule(self):
         return self.model.getAttr("X", self.model.getVars())
 
-def solveModel(self, timeLimit, EPS):
-    self.model.setParam('TimeLimit', timeLimit)
-    self.model.setParam('MIPGap', EPS)
-    self.model.optimize()
+    def getObjVal(self):
+        obj = self.model.getObjective()
+        value = obj.getValue()
+        return value
 
-#Build MP
+    def getStatus(self):
+        return self.model.status
+
+    def solveModel(self, timeLimit, EPS):
+        self.model.setParam('TimeLimit', timeLimit)
+        self.model.setParam('MIPGap', EPS)
+        self.model.optimize()
+
+#### Column Generation
+# Build MP
 master = MasterProblem(DataDF, Demand_Dict)
 master.buildModel()
 
+## Start
+print('         *****Column Generation Iteration*****          \n')
 modelImprovable = True
 objValHist = []
+t0 = time.time()
+max_itr = 3000
+itr = 0
 
-start = process_time()
-while (modelImprovable):
+while (modelImprovable) and itr < max_itr:
+    # Start
+    itr += 1
+    print('current iteration time: ', itr)
+
+    # Solve RMP
+    master.updateModel()
     master.solveRelaxModel()
+    objValHist.append(master.getObjValues)
+    print('Current rmp objval: ', objValHist)
+
+    # Get Duals
     duals_i = master.getDuals_i()
     duals_ts = master.getDuals_ts()
-    objValHist.append(master.getObjValues)
+
+    # Solve SPs
     for i in I_list:
-        subproblem = Subproblem(duals_i, duals_ts, DataDF)
+        subproblem = Subproblem(duals_i, duals_ts, DataDF, i)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
-        modelImprovable = (subproblem.getObjectiveValue) < -1e-6
-        newScheduleCost = subproblem.objVal
-        newScheduleCuts = subproblem.getNewSchedule()
-        master.addColumn(newScheduleCost, newScheduleCuts)
-        # Print partial time
-        sc = int(process_time() - start)
-        mn = int(sc / 60)
-        sc %= 60
-        print("Partial time:", mn, "min", sc, "s")
+        if subproblem.getStatus != GRB.status.OPTIMAL:
+            raise Exception("Pricing-Problem can not reach optimal!")
+        reducedCost = subproblem.getObjVal()
+        print('reduced cost', reducedCost)
+        if reducedCost < -1e-6:
+            ScheduleCuts = subproblem.getNewSchedule()
+            master.addColumn(ScheduleCuts, itr)
+        else:
+            modelImprovable = False
 
+# Solve MP
 master.solveModel(3600, 0.01)
-end = process_time()
-print("*** Results ***")
-sec = int(end-start)
-min = int(sec / 60)
-sec %=  60
-print("Time Elapsed:", min, "min", sec, "s")
-print("Impact solution cost:", impactCost)
-print("Exact solution cost:", masterModel.getAttr("ObjVal"))
 
-#return objValHist
-#objValHist.append(master.objVal)
-#import matplotlib.pyplot as plt
-#plt.plot(list(range(len(history))), history,c='r')
-#plt.scatter(list(range(len(history))), history, c='r')
-#plt.xlabel('history')
-#plt.ylabel('objective function value')
-#title = 'solution: ' + str(history[-1])
-#plt.title(title)
-#plt.show()
+# Results
+print('*** Results ***')
+print('Total iteration: ', itr)
+t1 = time.time()
+print('Total elapsed time: ', t1 - t0)
+print('Exact solution cost:', master.getAttr("ObjVal"))
+
+# Plot
+plt.scatter(list(range(len(rmp_objvals))), rmp_objvals, c='r')
+plt.xlabel('history')
+plt.ylabel('objective function value')
+title = 'solution: ' + str(rmp_objvals[-1])
+plt.title(title)
+plt.show()

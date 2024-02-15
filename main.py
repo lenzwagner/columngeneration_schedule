@@ -17,7 +17,6 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
           (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
           (7, 1): 0, (7, 2): 3, (7, 3): 0}
 
-
 class MasterProblem:
     def __init__(self, dfData, DemandDF):
         self.physicians = dfData['I'].dropna().astype(int).unique().tolist()

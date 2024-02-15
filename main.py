@@ -3,6 +3,7 @@ import gurobipy as gu
 import pandas as pd
 import itertools
 import time
+import matplotlib.pyplot as plt
 
 # Create DF out of Sets
 I_list = [1,2,3]

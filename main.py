@@ -2,6 +2,8 @@ from gurobipy import *
 import gurobipy as gu
 import pandas as pd
 import itertools
+from time import process_time
+
 
 # Create DF out of Sets
 I_list = [1,2,3]
@@ -64,6 +66,10 @@ class MasterProblem:
         Pi_cons_demand = self.model.getAttr("Pi", self.cons_demand)
         return Pi_cons_demand
 
+    def getObjValues(self):
+        obj = self.model.objVal
+        return obj
+
     def addColumn(self, objective, newSchedule):
         ctName = ('ScheduleUseVar[%s]' %len(self.model.getVars()))
         newColumn = gu.column(newSchedule, self.model.getConstrs())
@@ -79,7 +85,6 @@ class MasterProblem:
 
     def modelFlags(self):
         self.model.Params.OutputFlag = 0
-
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData):
@@ -108,8 +113,8 @@ class Subproblem:
             self.model.addConstr(self.mood[t] == 1 - self.alpha * quicksum(self.x[t, s] for s in self.shifts))
         for t in self.days:
             self.model.addConstr(gu.quicksum(self.x[t, s] for s in self.shifts) <= 1)
-        for t in range(1, len(self.days) - self.Max + 2):
-            self.model.addConstr(gu.quicksum(self.x[i, u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
+        for t in range(1, len(self.days) - self.Max + 1):
+            self.model.addConstr(gu.quicksum(self.x[u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
         for t in self.days:
             for s in self.shifts:
                 self.model.addConstr(self.mood[t] + self.M*(1-self.x[t, s]) >= self.motivation[t, s])
@@ -117,7 +122,7 @@ class Subproblem:
                 self.model.addConstr(self.motivation[t, s] <= self.x[t, s])
 
     def generateObjective(self):
-        self.model.setObjective(-gu.quicksum(self.motivation[t,s]*self.duals_ts[t,s] for s in self.shifts for t in self.days)-self.duals_i[i], sense = gu.GRB.MINIMIZE)
+        self.model.setObjective(-gu.quicksum(self.motivation[t,s]*self.duals_ts[t,s] for t in self.days for s in self.shifts)-self.duals_i[i], sense = gu.GRB.MINIMIZE)
 
     def getNewSchedule(self):
         return self.model.getAttr("X", self.model.getVars())
@@ -134,12 +139,13 @@ master.buildModel()
 modelImprovable = True
 objValHist = []
 
+start = process_time()
 while (modelImprovable):
     master.solveRelaxModel()
     duals_i = master.getDuals_i()
     duals_ts = master.getDuals_ts()
-    objValHist.append(master.ObjVal)
-    for i in I:
+    objValHist.append(master.getObjValues)
+    for i in I_list:
         subproblem = Subproblem(duals_i, duals_ts, DataDF)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
@@ -147,10 +153,21 @@ while (modelImprovable):
         newScheduleCost = subproblem.objVal
         newScheduleCuts = subproblem.getNewSchedule()
         master.addColumn(newScheduleCost, newScheduleCuts)
-
+        # Print partial time
+        sc = int(process_time() - start)
+        mn = int(sc / 60)
+        sc %= 60
+        print("Partial time:", mn, "min", sc, "s")
 
 master.solveModel(3600, 0.01)
-
+end = process_time()
+print("*** Results ***")
+sec = int(end-start)
+min = int(sec / 60)
+sec %=  60
+print("Time Elapsed:", min, "min", sec, "s")
+print("Impact solution cost:", impactCost)
+print("Exact solution cost:", masterModel.getAttr("ObjVal"))
 
 #return objValHist
 #objValHist.append(master.objVal)

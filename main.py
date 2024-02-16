@@ -18,11 +18,12 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
           (7, 1): 0, (7, 2): 3, (7, 3): 0}
 
 class MasterProblem:
-    def __init__(self, dfData, DemandDF):
+    def __init__(self, dfData, DemandDF, iteration):
+        self.iteration = iteration
         self.physicians = dfData['I'].dropna().astype(int).unique().tolist()
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
-        self.roster = {i: list(itertools.product(self.days, self.shifts)) for i in self.physicians}
+        self.roster = list(range(1,self.iteration+1))
         self.demand = DemandDF
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
@@ -43,11 +44,10 @@ class MasterProblem:
     def generateConstraints(self):
         for i in self.physicians:
             self.cons_lmbda[i] = self.model.addLConstr(gu.quicksum(self.lmbda[i, r] for r in self.roster) == 1)
-        return self.cons_lmbda
         for t in self.days:
             for s in self.shifts:
-                self.cons_demand[t,s] = self.model.addLConstr(gu.quicksum(self.motivation_i[i, t, s, r] for r in self.roster for i in self.physicians) + self.slack[t, s] >= self.demand[t, s])
-        return self.cons_demand
+                self.cons_demand[t,s] = self.model.addConstr(gu.quicksum(self.motivation_i[i, t, s, r] for i in self.physicians for r in self.roster) + self.slack[t, s] >= self.demand[t, s])
+        return self.cons_lmbda, self.cons_demand
 
     def generateObjective(self):
         self.model.setObjective(gu.quicksum(self.slack[t, s] for t in self.days for s in self.shifts), sense = gu.GRB.MINIMIZE)
@@ -149,19 +149,20 @@ class Subproblem:
         self.model.optimize()
 
 #### Column Generation
-# Build MP
-master = MasterProblem(DataDF, Demand_Dict)
-master.buildModel()
-
-## Start
-print('         *****Column Generation Iteration*****          \n')
+# Prerequisites
 modelImprovable = True
 objValHist = []
 t0 = time.time()
 max_itr = 3000
-itr = 0
+itr = 1
 
+## Start
+print('         *****Column Generation Iteration*****          \n')
 while (modelImprovable) and itr < max_itr:
+    # Build MP
+    master = MasterProblem(DataDF, Demand_Dict, itr)
+    master.buildModel()
+
     # Start
     itr += 1
     print('current iteration time: ', itr)

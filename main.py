@@ -109,6 +109,7 @@ class Subproblem:
         self.generateVariables()
         self.generateConstraints()
         self.generateObjective()
+        self.modelFlags()
         self.model.update()
 
     def generateVariables(self):
@@ -147,6 +148,9 @@ class Subproblem:
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setParam('MIPGap', EPS)
         self.model.optimize()
+
+    def modelFlags(self):
+        self.model.Params.OutputFlag = 0
 
 #### Column Generation
 # Prerequisites

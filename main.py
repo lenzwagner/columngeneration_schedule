@@ -23,7 +23,7 @@ class MasterProblem:
         self.physicians = dfData['I'].dropna().astype(int).unique().tolist()
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
-        self.roster = list(range(1,self.iteration+1))
+        self.roster = list(range(1,self.iteration+2))
         self.demand = DemandDF
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
@@ -73,9 +73,9 @@ class MasterProblem:
         self.model.update()
 
     def addColumn(self, newSchedule, iter, i):
-        ctName = f"ScheduleUsed[{i},{iter}]"
-        newColumn = gu.Column(newSchedule, self.model.getConstrs())
-        self.model.addVar(vtype=gu.GBR.CONTINOUS, lb=0, obj=1.0, column=newColumn, name=ctName)
+        colName = f"ScheduleUsed[{i},{iter}]"
+        Column = gu.Column(newSchedule, self.model.getConstrs())
+        self.model.addVar(vtype=gu.GBR.CONTINOUS, lb=0, obj=1.0, column=Column, name=colName)
         self.model.update()
 
     def setStartSolution(self):
@@ -92,6 +92,9 @@ class MasterProblem:
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setParam('MIPGap', EPS)
         self.model.optimize()
+
+    def writeModel(self):
+        self.model.write("master.lp")
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i):
@@ -134,7 +137,7 @@ class Subproblem:
         self.model.setObjective(0-gu.quicksum(self.motivation[t,s]*self.duals_ts[t,s] for t in self.days for s in self.shifts)-self.duals_i[self.i], sense = gu.GRB.MINIMIZE)
 
     def getNewSchedule(self):
-        return self.model.getAttr("X", self.model.getVars())
+        return self.model.getAttr("X", self.motivation)
 
     def getObjVal(self):
         obj = self.model.getObjective()
@@ -158,15 +161,15 @@ modelImprovable = True
 objValHist = []
 t0 = time.time()
 max_itr = 3000
-itr = 1
+itr = 0
+
+# Build MP
+master = MasterProblem(DataDF, Demand_Dict, itr)
+master.buildModel()
 
 ## Start
 print('         *****Column Generation Iteration*****          \n')
 while (modelImprovable) and itr < max_itr:
-    # Build MP
-    master = MasterProblem(DataDF, Demand_Dict, itr)
-    master.buildModel()
-
     # Start
     itr += 1
     print('current iteration time: ', itr)
@@ -200,6 +203,7 @@ while (modelImprovable) and itr < max_itr:
 master.solveModel(3600, 0.01)
 
 # Results
+master.writeModel()
 print('*** Results ***')
 print('Total iteration: ', itr)
 t1 = time.time()

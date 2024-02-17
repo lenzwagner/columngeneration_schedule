@@ -167,6 +167,13 @@ itr = 0
 master = MasterProblem(DataDF, Demand_Dict, itr)
 master.buildModel()
 
+master.updateModel()
+master.solveRelaxModel()
+
+# Get Duals
+duals_i = master.getDuals_i()
+duals_ts = master.getDuals_ts()
+
 ## Start
 print('         *****Column Generation Iteration*****          \n')
 while (modelImprovable) and itr < max_itr:
@@ -178,7 +185,7 @@ while (modelImprovable) and itr < max_itr:
     master.updateModel()
     master.solveRelaxModel()
     objValHist.append(master.getObjValues)
-    print('Current rmp objval: ', objValHist)
+    print('Current RMP ObjVal: ', objValHist)
 
     # Get Duals
     duals_i = master.getDuals_i()
@@ -189,13 +196,14 @@ while (modelImprovable) and itr < max_itr:
         subproblem = Subproblem(duals_i, duals_ts, DataDF, i)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
-        if subproblem.getStatus != GRB.status.OPTIMAL:
-            raise Exception("Pricing-Problem can not reach optimal!")
+        status = subproblem.getStatus()
+        if status != 2:
+            raise Exception("Pricing-Problem can not reach optimality!")
         reducedCost = subproblem.getObjVal()
         print('reduced cost', reducedCost)
         if reducedCost < -1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
-            master.addColumn(ScheduleCuts, itr)
+            master.addColumn(ScheduleCuts, itr, i)
         else:
             modelImprovable = False
 
@@ -212,8 +220,8 @@ print('Exact solution cost:', master.getAttr("ObjVal"))
 
 # Plot
 plt.scatter(list(range(len(rmp_objvals))), rmp_objvals, c='r')
-plt.xlabel('history')
-plt.ylabel('objective function value')
-title = 'solution: ' + str(rmp_objvals[-1])
+plt.xlabel('History')
+plt.ylabel('Objective function value')
+title = 'Solution: ' + str(rmp_objvals[-1])
 plt.title(title)
 plt.show()

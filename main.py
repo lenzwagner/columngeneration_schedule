@@ -80,7 +80,7 @@ class MasterProblem:
 
     def addColumn(self, newSchedule, iter, i):
         colName = f"ScheduleUsed[{i},{iter}]"
-        Column = gu.Column(newSchedule, self.model.getConstrs())
+        Column = gu.Column(newSchedule, self.cons_demand)
         self.model.addVar(vtype=gu.GBR.CONTINOUS, lb=0, obj=1.0, column=Column, name=colName)
         # Set all previous lambda variables to zero
         for prev_iter in range(1, iter):

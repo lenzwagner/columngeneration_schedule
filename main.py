@@ -119,8 +119,7 @@ class MasterProblem:
                 for t in self.days:
                     for s in self.shifts:
                         for r in self.roster:
-                            if self.motivation_i[i, t, s, r].x >= 0:
-                                print(f"Physician {i}: Shift {s} on day {t}")
+                            print(f"Physician {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
         else:
             print("No optimal solution found.")
 

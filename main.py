@@ -35,7 +35,6 @@ class MasterProblem:
         self.generateConstraints()
         self.generateObjective()
         self.setStartSolution()
-        self.modelFlags()
         self.model.update()
 
     def generateVariables(self):
@@ -85,7 +84,8 @@ class MasterProblem:
         for item in newSchedule:
             newScheduleList.append(newSchedule[item])
             cons_demandList.append(self.cons_demand[item])
-        Column = gu.Column(newScheduleList, cons_demandList)
+        rounded_ScheduleList = ['%.2f' % elem for elem in newScheduleList]
+        Column = gu.Column(rounded_ScheduleList, cons_demandList)
         self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, obj=1.0, column=Column, name=colName)
         self.model.update()
 
@@ -96,16 +96,23 @@ class MasterProblem:
         for i, t, s, r in startValues:
             self.motivation_i[i, t, s, r].Start = startValues[i, t, s, r]
 
-    def modelFlags(self):
-        self.model.Params.OutputFlag = 0
-
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setParam('MIPGap', EPS)
+        self.model.Params.OutputFlag = 0
         self.model.optimize()
 
     def writeModel(self):
         self.model.write("master.lp")
+
+    def File2Log(self):
+        self.model.Params.LogToConsole = 1
+        self.model.Params.LogFile = "./log.txt"
+
+    def getObjVal(self):
+        obj = self.model.getObjective()
+        value = obj.getValue()
+        return value
 
     def finalSolve(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
@@ -124,13 +131,13 @@ class MasterProblem:
             print("No optimal solution found.")
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, dfData, index):
+    def __init__(self, duals_i, duals_ts, dfData, i, M):
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
         self.duals_ts = duals_ts
         self.Max = 5
-        self.M = 100
+        self.M = M
         self.alpha = 0.5
         self.model = gu.Model("Subproblem")
         self.i = i
@@ -139,7 +146,6 @@ class Subproblem:
         self.generateVariables()
         self.generateConstraints()
         self.generateObjective()
-        self.modelFlags()
         self.model.update()
 
     def generateVariables(self):
@@ -155,6 +161,7 @@ class Subproblem:
         for t in range(1, len(self.days) - self.Max + 1):
             self.model.addConstr(
                 gu.quicksum(self.x[ u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
+
         for t in self.days:
             for s in self.shifts:
                 self.model.addConstr(self.mood[t] + self.M * (1 - self.x[t, s]) >= self.motivation[t, s])
@@ -180,78 +187,91 @@ class Subproblem:
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setParam('MIPGap', EPS)
-        self.model.optimize()
-
-    def modelFlags(self):
         self.model.Params.OutputFlag = 0
+        self.model.optimize()
+        if self.model.status == GRB.OPTIMAL:
+            print("Optimal solution found")
+            for t in self.days:
+                for s in self.shifts:
+                    print(f"Physician {self.i}: Motivation {self.motivation[t, s].x} in Shift {s} on day {t}")
+        else:
+            print("No optimal solution found.")
+
 
 #### Column Generation
-# Prerequisites
+# CG Prerequisites
 modelImprovable = True
-objValHist = []
 t0 = time.time()
-max_itr = 3000
+max_itr = 10
 itr = 0
 
-# Build MP
+# Lists
+objValHistSP = []
+objValHistRMP = []
+
+# Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, itr)
 master.buildModel()
+master.File2Log()
 master.updateModel()
 master.solveRelaxModel()
 
-# Get Duals
+# Get Duals from MP
 duals_i = master.getDuals_i()
 duals_ts = master.getDuals_ts()
 
-## Start
-print('         *****Column Generation Iteration*****          \n')
+print('*         *****Column Generation Iteration*****          \n*')
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
-    print('current iteration time: ', itr)
+    print('*Current iteration: ', itr)
 
     # Solve RMP
     master.updateModel()
     master.solveRelaxModel()
-    objValHist.append(master.getObjValues)
-    print('Current RMP ObjVal: ', objValHist)
+    objValHistRMP.append(master.getObjValues())
+    print('*Current RMP ObjVal: ', objValHistRMP)
 
     # Get Duals
     duals_i = master.getDuals_i()
     duals_ts = master.getDuals_ts()
 
     # Solve SPs
-    for i in I_list:
-        subproblem = Subproblem(duals_i, duals_ts, DataDF, i)
+    modelImprovable = False
+    for index in I_list:
+        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
         status = subproblem.getStatus()
         if status != 2:
             raise Exception("Pricing-Problem can not reach optimality!")
         reducedCost = subproblem.getObjVal()
-        objValHist.append(reducedCost)
-        print('reduced cost', reducedCost)
-        if reducedCost < -1e-6:
+        objValHistSP.append(reducedCost)
+        print('*Reduced cost', reducedCost)
+        if reducedCost < 1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
-            master.addColumn(ScheduleCuts, itr, i)
-        else:
-            modelImprovable = False
+            master.addColumn(ScheduleCuts, itr, index)
+            master.updateModel()
+            modelImprovable = True
 
 # Solve MP
 master.finalSolve(3600, 0.01)
 
 # Results
 master.writeModel()
-print('*** Results ***')
-print('Total iteration: ', itr)
+print('*                 *****Results*****                  \n*')
+print('*Total iteration: ', itr)
 t1 = time.time()
-print('Total elapsed time: ', t1 - t0)
-print('Exact solution cost:', master.getObjValues())
+print('*Total elapsed time: ', t1 - t0)
+print('*Exact solution cost:', master.getObjValues())
 
 # Plot
-plt.scatter(list(range(len(objValHist))), objValHist, c='r')
+plt.scatter(list(range(len(objValHistRMP))), objValHistRMP, c='r')
 plt.xlabel('History')
 plt.ylabel('Objective function value')
-title = 'Solution: ' + str(objValHist[-1])
+title = 'Solution: ' + str(objValHistRMP[-1])
 plt.title(title)
 plt.show()
+
+print(objValHistSP)
+print(objValHistRMP)

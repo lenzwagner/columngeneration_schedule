@@ -78,17 +78,15 @@ class MasterProblem:
     def updateModel(self):
         self.model.update()
 
-    def addColumn(self, newSchedule, iter, i):
-        colName = f"ScheduleUsed[{i},{iter}]"
-        Column = gu.Column(newSchedule, self.cons_demand)
-        self.model.addVar(vtype=gu.GBR.CONTINOUS, lb=0, obj=1.0, column=Column, name=colName)
-        # Set all previous lambda variables to zero
-        for prev_iter in range(1, iter):
-            for j in self.physicians:
-                self.lmbda[j, prev_iter].Start = 0
-        # Set the lambda variable for the current iteration to 1
-        for j in self.physicians:
-            self.lmbda[j, iter].Start = 1
+    def addColumn(self, newSchedule, iter, index):
+        colName = f"ScheduleUsed[{index},{iter}]"
+        newScheduleList = []
+        cons_demandList = []
+        for item in newSchedule:
+            newScheduleList.append(newSchedule[item])
+            cons_demandList.append(self.cons_demand[item])
+        Column = gu.Column(newScheduleList, cons_demandList)
+        self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, obj=1.0, column=Column, name=colName)
         self.model.update()
 
     def setStartSolution(self):
@@ -109,9 +107,25 @@ class MasterProblem:
     def writeModel(self):
         self.model.write("master.lp")
 
+    def finalSolve(self, timeLimit, EPS):
+        self.model.setParam('TimeLimit', timeLimit)
+        self.model.setParam('MIPGap', EPS)
+        self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
+        self.model.update()
+        self.model.optimize()
+        if self.model.status == GRB.OPTIMAL:
+            print("Optimal solution found")
+            for i in self.physicians:
+                for t in self.days:
+                    for s in self.shifts:
+                        for r in self.roster:
+                            if self.motivation_i[i, t, s, r].x >= 0:
+                                print(f"Physician {i}: Shift {s} on day {t}")
+        else:
+            print("No optimal solution found.")
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, dfData, i):
+    def __init__(self, duals_i, duals_ts, dfData, index):
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
@@ -132,8 +146,7 @@ class Subproblem:
     def generateVariables(self):
         self.x = self.model.addVars(self.days, self.shifts, vtype=GRB.BINARY, name='x')
         self.mood = self.model.addVars(self.days, vtype=GRB.CONTINUOUS, lb=0, ub=1, name='mood')
-        self.motivation = self.model.addVars(self.days, self.shifts, vtype=GRB.CONTINUOUS, lb=0, ub=1,
-                                             name='motivation')
+        self.motivation = self.model.addVars(self.days, self.shifts, vtype=GRB.CONTINUOUS, lb=0, ub=1, name='motivation')
 
     def generateConstraints(self):
         for t in self.days:
@@ -142,7 +155,7 @@ class Subproblem:
             self.model.addConstr(gu.quicksum(self.x[t, s] for s in self.shifts) <= 1)
         for t in range(1, len(self.days) - self.Max + 1):
             self.model.addConstr(
-                gu.quicksum(self.x[u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
+                gu.quicksum(self.x[ u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
         for t in self.days:
             for s in self.shifts:
                 self.model.addConstr(self.mood[t] + self.M * (1 - self.x[t, s]) >= self.motivation[t, s])
@@ -173,7 +186,6 @@ class Subproblem:
     def modelFlags(self):
         self.model.Params.OutputFlag = 0
 
-
 #### Column Generation
 # Prerequisites
 modelImprovable = True
@@ -185,7 +197,6 @@ itr = 0
 # Build MP
 master = MasterProblem(DataDF, Demand_Dict, itr)
 master.buildModel()
-
 master.updateModel()
 master.solveRelaxModel()
 
@@ -219,6 +230,7 @@ while (modelImprovable) and itr < max_itr:
         if status != 2:
             raise Exception("Pricing-Problem can not reach optimality!")
         reducedCost = subproblem.getObjVal()
+        objValHist.append(reducedCost)
         print('reduced cost', reducedCost)
         if reducedCost < -1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
@@ -227,7 +239,7 @@ while (modelImprovable) and itr < max_itr:
             modelImprovable = False
 
 # Solve MP
-master.solveModel(3600, 0.01)
+master.finalSolve(3600, 0.01)
 
 # Results
 master.writeModel()
@@ -235,12 +247,12 @@ print('*** Results ***')
 print('Total iteration: ', itr)
 t1 = time.time()
 print('Total elapsed time: ', t1 - t0)
-print('Exact solution cost:', master.getAttr("ObjVal"))
+print('Exact solution cost:', master.getObjValues())
 
 # Plot
-plt.scatter(list(range(len(rmp_objvals))), rmp_objvals, c='r')
+plt.scatter(list(range(len(objValHist))), objValHist, c='r')
 plt.xlabel('History')
 plt.ylabel('Objective function value')
-title = 'Solution: ' + str(rmp_objvals[-1])
+title = 'Solution: ' + str(objValHist[-1])
 plt.title(title)
 plt.show()

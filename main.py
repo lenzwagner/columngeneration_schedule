@@ -254,8 +254,6 @@ while (modelImprovable) and itr < max_itr:
     print('*Current CG iteration: ', itr)
 
     # Solve RMP
-    master = MasterProblem(DataDF, Demand_Dict, itr)
-    master.buildModel()
     master.solveRelaxModel()
     objValHistRMP.append(master.getObjValues())
     print('*Current RMP ObjVal: ', objValHistRMP)
@@ -282,7 +280,7 @@ while (modelImprovable) and itr < max_itr:
             master.addColumn(ScheduleCuts, itr, index)
             master.updateModel()
             modelImprovable = True
-
+    master.updateModel()
 
 # Solve MP
 master.finalSolve(3600, 0.01)

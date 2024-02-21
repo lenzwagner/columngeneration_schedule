@@ -33,6 +33,7 @@ class MasterProblem:
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
+        self.modifyConstraints()
         self.generateObjective()
         self.setStartSolution()
         self.model.update()
@@ -49,7 +50,7 @@ class MasterProblem:
         for t in self.days:
             for s in self.shifts:
                 self.cons_demand[t, s] = self.model.addConstr(
-                    gu.quicksum(self.motivation_i[i, t, s, r] for i in self.physicians for r in self.roster) +
+                    gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.physicians for r in self.roster) +
                     self.slack[t, s] >= self.demand[t, s])
         return self.cons_lmbda, self.cons_demand
 
@@ -134,6 +135,21 @@ class MasterProblem:
                             print(f"Physician {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
         else:
             print("No optimal solution found.")
+
+    def modifyConstraints(self):
+        for t in self.days:
+            for s in self.shifts:
+                current_cons = self.cons_demand[t, s]
+                qexpr = current_cons.getQCRow()
+                new_var = self.newvar
+                new_coef = self.newcoef
+                qexpr.add(new_var, new_coef)
+                rhs = current_cons.getAttr('RHS')
+                sense = current_cons.getAttr('Sense')
+                name = current_cons.getAttr('ConstrName')
+                newcon = self.model.addQConstr(qexpr, sense, rhs, name)
+                self.model.removeConstr(current_cons)
+                self.cons_demand[t, s] = newcon
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration):
@@ -266,6 +282,7 @@ while (modelImprovable) and itr < max_itr:
             master.addColumn(ScheduleCuts, itr, index)
             master.updateModel()
             modelImprovable = True
+
 
 # Solve MP
 master.finalSolve(3600, 0.01)

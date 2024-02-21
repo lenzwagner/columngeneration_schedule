@@ -45,7 +45,7 @@ class MasterProblem:
 
     def generateConstraints(self):
         for i in self.physicians:
-            self.cons_lmbda[i] = self.model.addLConstr(gu.quicksum(self.lmbda[i, r] for r in self.roster) == 1)
+            self.cons_lmbda[i] = self.model.addConstr(gu.quicksum(self.lmbda[i, r] for r in self.roster) == 1)
         for t in self.days:
             for s in self.shifts:
                 self.cons_demand[t, s] = self.model.addConstr(
@@ -58,6 +58,7 @@ class MasterProblem:
                                 sense=gu.GRB.MINIMIZE)
 
     def solveRelaxModel(self):
+        self.model.Params.QCPDual = 1
         for v in self.model.getVars():
             v.setAttr('vtype', 'C')
         self.model.optimize()
@@ -81,12 +82,12 @@ class MasterProblem:
         colName = f"ScheduleUsed[{index},{iter}]"
         newScheduleList = []
         cons_demandList = []
-        for item in newSchedule:
-            newScheduleList.append(newSchedule[item])
-            cons_demandList.append(self.cons_demand[item])
+        for i, t, s, r in newSchedule:
+            newScheduleList.append(newSchedule[i, t, s, r])
+            cons_demandList.append(self.cons_demand[t, s])
         rounded_ScheduleList = ['%.2f' % elem for elem in newScheduleList]
         Column = gu.Column(rounded_ScheduleList, cons_demandList)
-        self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, obj=1.0, column=Column, name=colName)
+        self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
         self.model.update()
 
     def setStartSolution(self):
@@ -99,8 +100,11 @@ class MasterProblem:
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setParam('MIPGap', EPS)
+        self.model.Params.QCPDual = 1
         self.model.Params.OutputFlag = 0
         self.model.optimize()
+        self.model.write("d.lp")
+
 
     def writeModel(self):
         self.model.write("master.lp")
@@ -120,6 +124,7 @@ class MasterProblem:
         self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
         self.model.update()
         self.model.optimize()
+        self.model.write("dd.lp")
         if self.model.status == GRB.OPTIMAL:
             print("Optimal solution found")
             for i in self.physicians:
@@ -131,47 +136,52 @@ class MasterProblem:
             print("No optimal solution found.")
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, dfData, i, M):
+    def __init__(self, duals_i, duals_ts, dfData, i, M, iteration):
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
         self.duals_ts = duals_ts
         self.Max = 5
+        self.Min = 2
         self.M = M
         self.alpha = 0.5
         self.model = gu.Model("Subproblem")
-        self.i = i
+        self.index = i
+        self.it = iteration
 
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
         self.generateObjective()
+        print(f"Index: {self.index}")
         self.model.update()
 
     def generateVariables(self):
-        self.x = self.model.addVars(self.days, self.shifts, vtype=GRB.BINARY, name='x')
-        self.mood = self.model.addVars(self.days, vtype=GRB.CONTINUOUS, lb=0, ub=1, name='mood')
-        self.motivation = self.model.addVars(self.days, self.shifts, vtype=GRB.CONTINUOUS, lb=0, ub=1, name='motivation')
+        self.x = self.model.addVars([self.index], self.days, self.shifts, vtype=GRB.BINARY, name='x')
+        self.y = self.model.addVars([self.index], self.days, vtype=GRB.BINARY, name='y')
+        self.mood = self.model.addVars([self.index], self.days, vtype=GRB.CONTINUOUS, lb=0, name='mood')
+        self.motivation = self.model.addVars([self.index], self.days, self.shifts, [self.it], vtype=GRB.CONTINUOUS, lb=0, name='motivation')
 
     def generateConstraints(self):
-        for t in self.days:
-            self.model.addConstr(self.mood[t] == 1 - self.alpha * quicksum(self.x[t, s] for s in self.shifts))
-        for t in self.days:
-            self.model.addConstr(gu.quicksum(self.x[t, s] for s in self.shifts) <= 1)
-        for t in range(1, len(self.days) - self.Max + 1):
-            self.model.addConstr(
-                gu.quicksum(self.x[ u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
+        for i in [self.index]:
+            for t in self.days:
+                self.model.addConstr(self.mood[i, t] == 1 - self.alpha * self.y[i, t])
+                self.model.addConstr(quicksum(self.x[i, t, s] for s in self.shifts) == self.y[i, t])
+                self.model.addConstr(gu.quicksum(self.x[i, t, s] for s in self.shifts) <= 1)
 
-        for t in self.days:
-            for s in self.shifts:
-                self.model.addConstr(self.mood[t] + self.M * (1 - self.x[t, s]) >= self.motivation[t, s])
-                self.model.addConstr(self.motivation[t, s] >= self.mood[t] - self.M * (1 - self.x[t, s]))
-                self.model.addConstr(self.motivation[t, s] <= self.x[t, s])
+            for t in range(1, len(self.days) - self.Max + 1):
+                self.model.addConstr(gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max)) <= self.Max)
+            self.model.addLConstr(quicksum(self.y[i, t] for t in self.days) >= self.Min)
+            for t in self.days:
+                for s in self.shifts:
+                    self.model.addLConstr(self.motivation[i, t, s, self.it] >= self.mood[i, t] - self.M * (1 - self.x[i, t, s]))
+                    self.model.addLConstr(self.motivation[i, t, s, self.it] <= self.mood[i, t] + self.M * (1 - self.x[i, t, s]))
+                    self.model.addLConstr(self.motivation[i, t, s, self.it] <= self.x[i, t, s])
 
     def generateObjective(self):
         self.model.setObjective(
-            0 - gu.quicksum(self.motivation[t, s] * self.duals_ts[t, s] for t in self.days for s in self.shifts) -
-            self.duals_i[self.i], sense=gu.GRB.MINIMIZE)
+            0 - gu.quicksum(self.motivation[i, t, s, self.it] * self.duals_ts[t, s] for i in [self.index] for t in self.days for s in self.shifts) -
+            self.duals_i[self.index], sense=gu.GRB.MINIMIZE)
 
     def getNewSchedule(self):
         return self.model.getAttr("X", self.motivation)
@@ -191,9 +201,10 @@ class Subproblem:
         self.model.optimize()
         if self.model.status == GRB.OPTIMAL:
             print("Optimal solution found")
-            for t in self.days:
-                for s in self.shifts:
-                    print(f"Physician {self.i}: Motivation {self.motivation[t, s].x} in Shift {s} on day {t}")
+            for i in [self.index]:
+                for t in self.days:
+                    for s in self.shifts:
+                        print(f"Physician {self.index}: Motivation {self.x[i, t, s].x} in Shift {s} on day {t}")
         else:
             print("No optimal solution found.")
 
@@ -202,7 +213,7 @@ class Subproblem:
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 10
+max_itr = 2
 itr = 0
 
 # Lists
@@ -224,13 +235,15 @@ print('*         *****Column Generation Iteration*****          \n*')
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
-    print('*Current iteration: ', itr)
+    print('*Current CG iteration: ', itr)
 
     # Solve RMP
-    master.updateModel()
+    master = MasterProblem(DataDF, Demand_Dict, itr)
+    master.buildModel()
     master.solveRelaxModel()
     objValHistRMP.append(master.getObjValues())
     print('*Current RMP ObjVal: ', objValHistRMP)
+
 
     # Get Duals
     duals_i = master.getDuals_i()
@@ -239,7 +252,7 @@ while (modelImprovable) and itr < max_itr:
     # Solve SPs
     modelImprovable = False
     for index in I_list:
-        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6)
+        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
         status = subproblem.getStatus()

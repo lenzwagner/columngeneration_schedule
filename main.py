@@ -33,6 +33,7 @@ class MasterProblem:
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
+        self.model.update()
         self.modifyConstraints()
         self.generateObjective()
         self.setStartSolution()
@@ -139,8 +140,10 @@ class MasterProblem:
     def modifyConstraints(self):
         for t in self.days:
             for s in self.shifts:
+                self.newvar = self.model.addVars(self.physicians, self.days, self.shifts, self.roster, vtype=gu.GRB.CONTINUOUS, lb=0, ub=1, name='motivation_iq')
+                self.newcoef = 1.0
                 current_cons = self.cons_demand[t, s]
-                qexpr = current_cons.getQCRow()
+                qexpr = self.model.getQCRow(current_cons)
                 new_var = self.newvar
                 new_coef = self.newcoef
                 qexpr.add(new_var, new_coef)

@@ -278,7 +278,7 @@ while (modelImprovable) and itr < max_itr:
         reducedCost = subproblem.getObjVal()
         objValHistSP.append(reducedCost)
         print('*Reduced cost', reducedCost)
-        if reducedCost < 1e-6:
+        if reducedCost < +1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
             master.modifyConstraint()
             master.addColumn(ScheduleCuts, itr, index)

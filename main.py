@@ -28,13 +28,13 @@ class MasterProblem:
         self.demand = DemandDF
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
+        self.newvar = {}
         self.cons_lmbda = {}
 
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
         self.model.update()
-        self.modifyConstraints()
         self.generateObjective()
         self.setStartSolution()
         self.model.update()
@@ -70,7 +70,7 @@ class MasterProblem:
         return Pi_cons_lmbda
 
     def getDuals_ts(self):
-        Pi_cons_demand = self.model.getAttr("Pi", self.cons_demand)
+        Pi_cons_demand = self.model.getAttr("QCPi", self.cons_demand)
         return Pi_cons_demand
 
     def getObjValues(self):
@@ -81,15 +81,15 @@ class MasterProblem:
         self.model.update()
 
     def addColumn(self, newSchedule, iter, index):
+        self.newvar = {}
         colName = f"ScheduleUsed[{index},{iter}]"
         newScheduleList = []
         cons_demandList = []
         for i, t, s, r in newSchedule:
             newScheduleList.append(newSchedule[i, t, s, r])
-            cons_demandList.append(self.cons_demand[t, s])
         rounded_ScheduleList = ['%.2f' % elem for elem in newScheduleList]
-        Column = gu.Column(rounded_ScheduleList, cons_demandList)
-        self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
+        Column = gu.Column(rounded_ScheduleList, newcon)
+        self.newvar = self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
         self.model.update()
 
     def setStartSolution(self):
@@ -133,14 +133,14 @@ class MasterProblem:
                 for t in self.days:
                     for s in self.shifts:
                         for r in self.roster:
-                            print(f"Physician {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
+                            print(f"Nurse {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
         else:
             print("No optimal solution found.")
 
-    def modifyConstraints(self):
+
+    def modifyConstraint(self):
         for t in self.days:
             for s in self.shifts:
-                self.newvar = self.model.addVars(self.physicians, self.days, self.shifts, self.roster, vtype=gu.GRB.CONTINUOUS, lb=0, ub=1, name='motivation_iq')
                 self.newcoef = 1.0
                 current_cons = self.cons_demand[t, s]
                 qexpr = self.model.getQCRow(current_cons)
@@ -153,7 +153,7 @@ class MasterProblem:
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
                 self.model.removeConstr(current_cons)
                 self.cons_demand[t, s] = newcon
-
+                return newcon
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration):
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
@@ -280,6 +280,7 @@ while (modelImprovable) and itr < max_itr:
         print('*Reduced cost', reducedCost)
         if reducedCost < 1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
+            master.modifyConstraint()
             master.addColumn(ScheduleCuts, itr, index)
             master.updateModel()
             modelImprovable = True
@@ -287,22 +288,3 @@ while (modelImprovable) and itr < max_itr:
 
 # Solve MP
 master.finalSolve(3600, 0.01)
-
-# Results
-master.writeModel()
-print('*                 *****Results*****                  \n*')
-print('*Total iteration: ', itr)
-t1 = time.time()
-print('*Total elapsed time: ', t1 - t0)
-print('*Exact solution cost:', master.getObjValues())
-
-# Plot
-plt.scatter(list(range(len(objValHistRMP))), objValHistRMP, c='r')
-plt.xlabel('History')
-plt.ylabel('Objective function value')
-title = 'Solution: ' + str(objValHistRMP[-1])
-plt.title(title)
-plt.show()
-
-print(objValHistSP)
-print(objValHistRMP)

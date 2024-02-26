@@ -88,7 +88,7 @@ class MasterProblem:
         for i, t, s, r in newSchedule:
             newScheduleList.append(newSchedule[i, t, s, r])
         rounded_ScheduleList = ['%.2f' % elem for elem in newScheduleList]
-        Column = gu.Column(rounded_ScheduleList, newcon)
+        Column = gu.Column([], [])
         self.newvar = self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
         self.model.update()
 
@@ -137,7 +137,6 @@ class MasterProblem:
         else:
             print("No optimal solution found.")
 
-
     def modifyConstraint(self):
         for t in self.days:
             for s in self.shifts:
@@ -147,13 +146,15 @@ class MasterProblem:
                 new_var = self.newvar
                 new_coef = self.newcoef
                 qexpr.add(new_var, new_coef)
-                rhs = current_cons.getAttr('RHS')
-                sense = current_cons.getAttr('Sense')
-                name = current_cons.getAttr('ConstrName')
+                rhs = current_cons.getAttr('QCRHS')
+                sense = current_cons.getAttr('QCSense')
+                name = current_cons.getAttr('QCName')
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
-                self.model.removeConstr(current_cons)
+                self.model.remove(current_cons)
                 self.cons_demand[t, s] = newcon
                 return newcon
+
+
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration):
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
@@ -232,7 +233,7 @@ class Subproblem:
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 2
+max_itr = 20
 itr = 0
 
 # Lists
@@ -278,13 +279,31 @@ while (modelImprovable) and itr < max_itr:
         reducedCost = subproblem.getObjVal()
         objValHistSP.append(reducedCost)
         print('*Reduced cost', reducedCost)
-        if reducedCost < 1e-6:
+        if reducedCost < -1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
-            master.modifyConstraint()
             master.addColumn(ScheduleCuts, itr, index)
+            master.modifyConstraint()
             master.updateModel()
             modelImprovable = True
     master.updateModel()
 
 # Solve MP
 master.finalSolve(3600, 0.01)
+
+# Results
+master.writeModel()
+print('*                 *****Results*****                  \n*')
+print('*Total iteration: ', itr)
+t1 = time.time()
+print('*Total elapsed time: ', t1 - t0)
+print('*Exact solution:', master.getObjValues())
+
+# Plot
+plt.scatter(list(range(len(objValHistRMP))), objValHistRMP, c='r')
+plt.xlabel('History')
+plt.ylabel('Objective function value')
+title = 'Solution: ' + str(objValHistRMP[-1])
+plt.title(title)
+plt.show()
+print(objValHistSP)
+print(objValHistRMP)

@@ -86,7 +86,7 @@ class MasterProblem:
             cons_demandList.append(self.cons_demand[item])
         rounded_ScheduleList = ['%.2f' % elem for elem in newScheduleList]
         Column = gu.Column(rounded_ScheduleList, cons_demandList)
-        self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, obj=1.0, column=Column, name=colName)
+        self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
         self.model.update()
 
     def setStartSolution(self):
@@ -103,7 +103,7 @@ class MasterProblem:
         self.model.optimize()
 
     def writeModel(self):
-        self.model.write("master.lp")
+        self.model.write("master2.lp")
 
     def File2Log(self):
         self.model.Params.LogToConsole = 1
@@ -136,8 +136,9 @@ class Subproblem:
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
         self.duals_ts = duals_ts
-        self.Max = 5
+        self.Max = 6
         self.M = M
+        self.Min = 4
         self.alpha = 0.5
         self.model = gu.Model("Subproblem")
         self.i = i
@@ -161,12 +162,13 @@ class Subproblem:
         for t in range(1, len(self.days) - self.Max + 1):
             self.model.addConstr(
                 gu.quicksum(self.x[ u, s] for s in self.shifts for u in range(t, t + 1 + self.Max)) <= self.Max)
+        self.model.addLConstr(quicksum(self.x[t, s] for t in self.days for s in self.shifts) >= self.Min)
 
         for t in self.days:
             for s in self.shifts:
-                self.model.addConstr(self.mood[t] + self.M * (1 - self.x[t, s]) >= self.motivation[t, s])
-                self.model.addConstr(self.motivation[t, s] >= self.mood[t] - self.M * (1 - self.x[t, s]))
-                self.model.addConstr(self.motivation[t, s] <= self.x[t, s])
+                self.model.addLConstr(self.motivation[t, s] >= self.mood[t] - self.M * (1 - self.x[t, s]))
+                self.model.addLConstr(self.motivation[t, s] <= self.mood[t] + self.M * (1 - self.x[t, s]))
+                self.model.addLConstr(self.motivation[t, s] <= self.x[t, s])
 
     def generateObjective(self):
         self.model.setObjective(
@@ -175,6 +177,13 @@ class Subproblem:
 
     def getNewSchedule(self):
         return self.model.getAttr("X", self.motivation)
+
+    def printValues(self):
+        values_opt = self.model.getAttr("X", self.x)
+        return values_opt
+    def printValues2(self):
+        values_opt = self.model.getAttr("X", self.motivation)
+        return values_opt
 
     def getObjVal(self):
         obj = self.model.getObjective()
@@ -202,7 +211,7 @@ class Subproblem:
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 10
+max_itr = 1
 itr = 0
 
 # Lists
@@ -249,6 +258,10 @@ while (modelImprovable) and itr < max_itr:
         objValHistSP.append(reducedCost)
         print('*Reduced cost', reducedCost)
         if reducedCost < 1e-6:
+            values = subproblem.printValues()
+            values2 = subproblem.printValues2()
+            print(f" Physician {index}: {values}")
+            print(f" Physician {index}: {values2}")
             ScheduleCuts = subproblem.getNewSchedule()
             master.addColumn(ScheduleCuts, itr, index)
             master.updateModel()
@@ -263,7 +276,7 @@ print('*                 *****Results*****                  \n*')
 print('*Total iteration: ', itr)
 t1 = time.time()
 print('*Total elapsed time: ', t1 - t0)
-print('*Exact solution cost:', master.getObjValues())
+print('*Exact solution:', master.getObjValues())
 
 # Plot
 plt.scatter(list(range(len(objValHistRMP))), objValHistRMP, c='r')

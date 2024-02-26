@@ -272,6 +272,5 @@ plt.ylabel('Objective function value')
 title = 'Solution: ' + str(objValHistRMP[-1])
 plt.title(title)
 plt.show()
-
 print(objValHistSP)
 print(objValHistRMP)

@@ -21,7 +21,7 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
 class MasterProblem:
     def __init__(self, dfData, DemandDF, iteration):
         self.iteration = iteration
-        self.physicians = dfData['I'].dropna().astype(int).unique().tolist()
+        self.nurses = dfData['I'].dropna().astype(int).unique().tolist()
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.roster = list(range(1, self.iteration + 2))
@@ -41,17 +41,17 @@ class MasterProblem:
 
     def generateVariables(self):
         self.slack = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, lb=0, name='slack')
-        self.motivation_i = self.model.addVars(self.physicians, self.days, self.shifts, self.roster,
+        self.motivation_i = self.model.addVars(self.nurses, self.days, self.shifts, self.roster,
                                                vtype=gu.GRB.CONTINUOUS, lb=0, ub=1, name='motivation_i')
-        self.lmbda = self.model.addVars(self.physicians, self.roster, vtype=gu.GRB.BINARY, lb=0, name='lmbda')
+        self.lmbda = self.model.addVars(self.nurses, self.roster, vtype=gu.GRB.BINARY, lb=0, name='lmbda')
 
     def generateConstraints(self):
-        for i in self.physicians:
+        for i in self.nurses:
             self.cons_lmbda[i] = self.model.addConstr(gu.quicksum(self.lmbda[i, r] for r in self.roster) == 1)
         for t in self.days:
             for s in self.shifts:
                 self.cons_demand[t, s] = self.model.addConstr(
-                    gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.physicians for r in self.roster) +
+                    gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.roster) +
                     self.slack[t, s] >= self.demand[t, s])
         return self.cons_lmbda, self.cons_demand
 
@@ -94,7 +94,7 @@ class MasterProblem:
 
     def setStartSolution(self):
         startValues = {}
-        for i, t, s, r in itertools.product(self.physicians, self.days, self.shifts, self.roster):
+        for i, t, s, r in itertools.product(self.nurses, self.days, self.shifts, self.roster):
             startValues[(i, t, s, r)] = 0
         for i, t, s, r in startValues:
             self.motivation_i[i, t, s, r].Start = startValues[i, t, s, r]
@@ -129,7 +129,7 @@ class MasterProblem:
         self.model.write("dd.lp")
         if self.model.status == GRB.OPTIMAL:
             print("Optimal solution found")
-            for i in self.physicians:
+            for i in self.nurses:
                 for t in self.days:
                     for s in self.shifts:
                         for r in self.roster:
@@ -224,7 +224,7 @@ class Subproblem:
             for i in [self.index]:
                 for t in self.days:
                     for s in self.shifts:
-                        print(f"Physician {self.index}: Motivation {self.x[i, t, s].x} in Shift {s} on day {t}")
+                        print(f"Nurse {self.index}: Motivation {self.x[i, t, s].x} in Shift {s} on day {t}")
         else:
             print("No optimal solution found.")
 
@@ -233,7 +233,7 @@ class Subproblem:
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 20
+max_itr = 2
 itr = 0
 
 # Lists

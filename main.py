@@ -1,9 +1,14 @@
 from gurobipy import *
 import gurobipy as gu
 import pandas as pd
+import os
 import itertools
 import time
 import matplotlib.pyplot as plt
+
+# General Prerequisites
+if os.path.exists("model.lp"):
+    os.remove("model.lp")
 
 # Create DF out of Sets
 I_list = [1, 2, 3]

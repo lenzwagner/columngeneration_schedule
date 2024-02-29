@@ -7,6 +7,9 @@ import time
 import seaborn
 import matplotlib.pyplot as plt
 
+clear = lambda: os.system('cls')
+clear()
+
 # General Prerequisites
 if os.path.exists("model.lp"):
     os.remove("model.lp")
@@ -25,12 +28,13 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
 
 
 class MasterProblem:
-    def __init__(self, dfData, DemandDF, iteration):
+    def __init__(self, dfData, DemandDF, iteration, current_iteration):
         self.iteration = iteration
+        self.current_iteration = current_iteration
         self.nurses = dfData['I'].dropna().astype(int).unique().tolist()
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
-        self.roster = list(range(1, self.iteration + 2))
+        self.roster = list(range(1, self.current_iteration + 2))
         self.demand = DemandDF
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
@@ -43,6 +47,7 @@ class MasterProblem:
         self.model.update()
         self.generateObjective()
         self.model.update()
+        print(f"Roster-Index: {self.roster}")
 
     def generateVariables(self):
         self.slack = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, lb=0, name='slack')
@@ -85,9 +90,7 @@ class MasterProblem:
     def updateModel(self):
         self.model.update()
 
-    def addColumn(self, newSchedule, iter, index):
-        i = index
-        r = iter
+    def addColumn(self, newSchedule):
         self.newvar = {}
         colName = f"Schedule[{self.nurses},{self.roster}]"
         newScheduleList = []
@@ -95,6 +98,8 @@ class MasterProblem:
             newScheduleList.append(newSchedule[i, t, s, r])
         Column = gu.Column([], [])
         self.newvar = self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
+        self.current_iteration = itr
+        print(f"Roster-Index: {self.current_iteration}")
         self.model.update()
 
     def setStartSolution(self):
@@ -142,7 +147,9 @@ class MasterProblem:
         else:
             print("No optimal solution found.")
 
-    def modifyConstraint(self):
+    def modifyConstraint(self, index, itr):
+        self.nurseIndex = index
+        self.rosterIndex = itr
         for t in self.days:
             for s in self.shifts:
                 self.newcoef = 1.0
@@ -150,7 +157,7 @@ class MasterProblem:
                 qexpr = self.model.getQCRow(current_cons)
                 new_var = self.newvar
                 new_coef = self.newcoef
-                qexpr.add(new_var * self.lmbda[self.nurses, self.roster], new_coef)
+                qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex + 1], new_coef)
                 rhs = current_cons.getAttr('QCRHS')
                 sense = current_cons.getAttr('QCSense')
                 name = current_cons.getAttr('QCName')
@@ -251,7 +258,7 @@ objValHistRMP = []
 avg_rc_hist = []
 
 # Build & Solve MP
-master = MasterProblem(DataDF, Demand_Dict, itr)
+master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
 master.buildModel()
 master.setStartSolution()
 master.File2Log()
@@ -294,8 +301,8 @@ while (modelImprovable) and itr < max_itr:
         print('*Reduced cost', reducedCost)
         if reducedCost < -1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
-            master.addColumn(ScheduleCuts, itr, index)
-            master.modifyConstraint()
+            master.addColumn(ScheduleCuts)
+            master.modifyConstraint(index, itr)
             master.updateModel()
             modelImprovable = True
     master.updateModel()

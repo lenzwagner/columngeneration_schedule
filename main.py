@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import itertools
 import time
+import seaborn
 import matplotlib.pyplot as plt
 
 # General Prerequisites
@@ -41,7 +42,6 @@ class MasterProblem:
         self.generateConstraints()
         self.model.update()
         self.generateObjective()
-        self.setStartSolution()
         self.model.update()
 
     def generateVariables(self):
@@ -86,13 +86,13 @@ class MasterProblem:
         self.model.update()
 
     def addColumn(self, newSchedule, iter, index):
+        i = index
+        r = iter
         self.newvar = {}
-        colName = f"ScheduleUsed[{index},{iter}]"
+        colName = f"Schedule[{self.nurses},{self.roster}]"
         newScheduleList = []
-        cons_demandList = []
         for i, t, s, r in newSchedule:
             newScheduleList.append(newSchedule[i, t, s, r])
-        rounded_ScheduleList = ['%.2f' % elem for elem in newScheduleList]
         Column = gu.Column([], [])
         self.newvar = self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
         self.model.update()
@@ -150,7 +150,7 @@ class MasterProblem:
                 qexpr = self.model.getQCRow(current_cons)
                 new_var = self.newvar
                 new_coef = self.newcoef
-                qexpr.add(new_var, new_coef)
+                qexpr.add(new_var * self.lmbda[self.nurses, self.roster], new_coef)
                 rhs = current_cons.getAttr('QCRHS')
                 sense = current_cons.getAttr('QCSense')
                 name = current_cons.getAttr('QCName')
@@ -211,6 +211,10 @@ class Subproblem:
     def getNewSchedule(self):
         return self.model.getAttr("X", self.motivation)
 
+    def getOptValues(self):
+        d = self.model.getAttr("X", self.motivation)
+        return d
+
     def getObjVal(self):
         obj = self.model.getObjective()
         value = obj.getValue()
@@ -244,10 +248,12 @@ itr = 0
 # Lists
 objValHistSP = []
 objValHistRMP = []
+avg_rc_hist = []
 
 # Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, itr)
 master.buildModel()
+master.setStartSolution()
 master.File2Log()
 master.updateModel()
 master.solveRelaxModel()
@@ -278,6 +284,8 @@ while (modelImprovable) and itr < max_itr:
         subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
+        val = subproblem.getOptValues()
+        print(f" Opt. Values {val}")
         status = subproblem.getStatus()
         if status != 2:
             raise Exception("Pricing-Problem can not reach optimality!")
@@ -292,6 +300,10 @@ while (modelImprovable) and itr < max_itr:
             modelImprovable = True
     master.updateModel()
 
+    avg_rc = sum(objValHistSP) / len(objValHistSP)
+    avg_rc_hist.append(avg_rc)
+    objValHistSP.clear()
+
 # Solve MP
 master.finalSolve(3600, 0.01)
 
@@ -304,10 +316,12 @@ print('*Total elapsed time: ', t1 - t0)
 print('*Exact solution:', master.getObjValues())
 
 # Plot
-plt.scatter(list(range(len(objValHistRMP))), objValHistRMP, c='r')
-plt.xlabel('History')
+seaborn.set(style='darkgrid')
+seaborn.scatterplot(x=list(range(len(avg_rc_hist))), y=avg_rc_hist)
+plt.xlabel('Iterations')
+plt.xticks(range(0,len(avg_rc_hist)))
 plt.ylabel('Objective function value')
-title = 'Solution: ' + str(objValHistRMP[-1])
+title = 'Solution: ' + str(avg_rc_hist[-1])
 plt.title(title)
 plt.show()
 print(objValHistSP)

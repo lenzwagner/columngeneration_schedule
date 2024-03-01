@@ -29,7 +29,7 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, iteration, current_iteration):
-        self.iteration = iteration
+        self.itreration = iteration
         self.current_iteration = current_iteration
         self.nurses = dfData['I'].dropna().astype(int).unique().tolist()
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
@@ -157,7 +157,7 @@ class MasterProblem:
                 qexpr = self.model.getQCRow(current_cons)
                 new_var = self.newvar
                 new_coef = self.newcoef
-                qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex + 1], new_coef)
+                qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex+1], new_coef)
                 rhs = current_cons.getAttr('QCRHS')
                 sense = current_cons.getAttr('QCSense')
                 name = current_cons.getAttr('QCName')
@@ -169,6 +169,7 @@ class MasterProblem:
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration):
+        itr = iteration + 1
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
@@ -179,7 +180,7 @@ class Subproblem:
         self.alpha = 0.5
         self.model = gu.Model("Subproblem")
         self.index = i
-        self.it = iteration
+        self.itr = itr
 
     def buildModel(self):
         self.generateVariables()
@@ -192,7 +193,7 @@ class Subproblem:
         self.x = self.model.addVars([self.index], self.days, self.shifts, vtype=GRB.BINARY, name='x')
         self.y = self.model.addVars([self.index], self.days, vtype=GRB.BINARY, name='y')
         self.mood = self.model.addVars([self.index], self.days, vtype=GRB.CONTINUOUS, lb=0, name='mood')
-        self.motivation = self.model.addVars([self.index], self.days, self.shifts, [self.it], vtype=GRB.CONTINUOUS, lb=0, name='motivation')
+        self.motivation = self.model.addVars([self.index], self.days, self.shifts, [self.itr], vtype=GRB.CONTINUOUS, lb=0, name='motivation')
 
     def generateConstraints(self):
         for i in [self.index]:
@@ -206,13 +207,13 @@ class Subproblem:
             self.model.addLConstr(quicksum(self.y[i, t] for t in self.days) >= self.Min)
             for t in self.days:
                 for s in self.shifts:
-                    self.model.addLConstr(self.motivation[i, t, s, self.it] >= self.mood[i, t] - self.M * (1 - self.x[i, t, s]))
-                    self.model.addLConstr(self.motivation[i, t, s, self.it] <= self.mood[i, t] + self.M * (1 - self.x[i, t, s]))
-                    self.model.addLConstr(self.motivation[i, t, s, self.it] <= self.x[i, t, s])
+                    self.model.addLConstr(self.motivation[i, t, s, self.itr] >= self.mood[i, t] - self.M * (1 - self.x[i, t, s]))
+                    self.model.addLConstr(self.motivation[i, t, s, self.itr] <= self.mood[i, t] + self.M * (1 - self.x[i, t, s]))
+                    self.model.addLConstr(self.motivation[i, t, s, self.itr] <= self.x[i, t, s])
 
     def generateObjective(self):
         self.model.setObjective(
-            0 - gu.quicksum(self.motivation[i, t, s, self.it] * self.duals_ts[t, s] for i in [self.index] for t in self.days for s in self.shifts) -
+            0 - gu.quicksum(self.motivation[i, t, s, self.itr] * self.duals_ts[t, s] for i in [self.index] for t in self.days for s in self.shifts) -
             self.duals_i[self.index], sense=gu.GRB.MINIMIZE)
 
     def getNewSchedule(self):

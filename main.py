@@ -117,7 +117,6 @@ class MasterProblem:
         self.model.Params.QCPDual = 1
         self.model.Params.OutputFlag = 0
         self.model.optimize()
-        self.model.write("d.lp")
 
 
     def writeModel(self):
@@ -198,7 +197,6 @@ class Subproblem:
         self.generateVariables()
         self.generateConstraints()
         self.generateObjective()
-        print(f"Index: {self.index}")
         self.model.update()
 
     def generateVariables(self):

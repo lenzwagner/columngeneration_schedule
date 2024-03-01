@@ -28,13 +28,15 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
 
 
 class MasterProblem:
-    def __init__(self, dfData, DemandDF, iteration, current_iteration):
-        self.itreration = iteration
-        self.current_iteration = current_iteration
+    def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
+        self.iteration = current_iteration
+        self.max_iteration = max_iteration
         self.nurses = dfData['I'].dropna().astype(int).unique().tolist()
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
-        self.roster = list(range(1, self.current_iteration + 2))
+        self._current_iteration = current_iteration
+        self.roster = [i for i in range(1, self.max_iteration + 2)]
+        self.rosterinitial = [i for i in range(1, 2)]
         self.demand = DemandDF
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
@@ -47,7 +49,6 @@ class MasterProblem:
         self.model.update()
         self.generateObjective()
         self.model.update()
-        print(f"Roster-Index: {self.roster}")
 
     def generateVariables(self):
         self.slack = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, lb=0, name='slack')
@@ -57,11 +58,11 @@ class MasterProblem:
 
     def generateConstraints(self):
         for i in self.nurses:
-            self.cons_lmbda[i] = self.model.addConstr(gu.quicksum(self.lmbda[i, r] for r in self.roster) == 1)
+            self.cons_lmbda[i] = self.model.addConstr(gu.quicksum(self.lmbda[i, r] for r in self.rosterinitial) == 1)
         for t in self.days:
             for s in self.shifts:
                 self.cons_demand[t, s] = self.model.addConstr(
-                    gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.roster) +
+                    gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.rosterinitial) +
                     self.slack[t, s] >= self.demand[t, s])
         return self.cons_lmbda, self.cons_demand
 
@@ -91,15 +92,16 @@ class MasterProblem:
         self.model.update()
 
     def addColumn(self, newSchedule):
+        self.nurseIndex = index
+        self.rosterIndex = itr + 1
         self.newvar = {}
-        colName = f"Schedule[{self.nurses},{self.roster}]"
+        colName = f"Schedule[{self.nurseIndex},{self.rosterIndex}]"
         newScheduleList = []
         for i, t, s, r in newSchedule:
             newScheduleList.append(newSchedule[i, t, s, r])
         Column = gu.Column([], [])
         self.newvar = self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
         self.current_iteration = itr
-        print(f"Roster-Index: {self.current_iteration}")
         self.model.update()
 
     def setStartSolution(self):
@@ -149,7 +151,8 @@ class MasterProblem:
 
     def modifyConstraint(self, index, itr):
         self.nurseIndex = index
-        self.rosterIndex = itr
+        self.rosterIndex = itr + 1
+        print(f"RosterIndex: {self.rosterIndex}")
         for t in self.days:
             for s in self.shifts:
                 self.newcoef = 1.0
@@ -157,7 +160,7 @@ class MasterProblem:
                 qexpr = self.model.getQCRow(current_cons)
                 new_var = self.newvar
                 new_coef = self.newcoef
-                qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex+1], new_coef)
+                qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex], new_coef)
                 rhs = current_cons.getAttr('QCRHS')
                 sense = current_cons.getAttr('QCSense')
                 name = current_cons.getAttr('QCName')
@@ -165,6 +168,15 @@ class MasterProblem:
                 self.model.remove(current_cons)
                 self.cons_demand[t, s] = newcon
                 return newcon
+
+    @property
+    def current_iteration(self):
+        return self._current_iteration
+
+    @current_iteration.setter
+    def current_iteration(self, value):
+        self.roster.append(value)
+        self._current_iteration = value
 
 
 class Subproblem:
@@ -265,18 +277,22 @@ master.setStartSolution()
 master.File2Log()
 master.updateModel()
 master.solveRelaxModel()
+print(f" Roster: {master.roster}")
 
 # Get Duals from MP
 duals_i = master.getDuals_i()
 duals_ts = master.getDuals_ts()
 
 print('*         *****Column Generation Iteration*****          \n*')
+t0 = time.time()
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
     print('*Current CG iteration: ', itr)
 
     # Solve RMP
+    master.current_iteration = itr + 1
+    print(f"Current Roster: {master.roster}")
     master.solveRelaxModel()
     objValHistRMP.append(master.getObjValues())
     print('*Current RMP ObjVal: ', objValHistRMP)

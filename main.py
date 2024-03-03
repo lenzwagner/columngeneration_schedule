@@ -105,11 +105,10 @@ class MasterProblem:
         self.model.update()
 
     def setStartSolution(self):
-        startValues = {}
-        for i, t, s, r in itertools.product(self.nurses, self.days, self.shifts, self.roster):
-            startValues[(i, t, s, r)] = 0
-        for i, t, s, r in startValues:
-            self.motivation_i[i, t, s, r].Start = startValues[i, t, s, r]
+        for i in self.nurses:
+            for t in self.days:
+                for s in self.shifts:
+                    self.model.addConstr(self.motivation_i[i ,t, s, 1] == 0, name = "initial")
 
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)

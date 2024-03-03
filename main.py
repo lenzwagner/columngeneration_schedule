@@ -72,6 +72,7 @@ class MasterProblem:
 
     def solveRelaxModel(self):
         self.model.Params.QCPDual = 1
+        self.model.Params.NonConvex = 2
         for v in self.model.getVars():
             v.setAttr('vtype', 'C')
         self.model.optimize()
@@ -108,7 +109,7 @@ class MasterProblem:
         for i in self.nurses:
             for t in self.days:
                 for s in self.shifts:
-                    self.model.addConstr(self.motivation_i[i ,t, s, 1] == 0, name = "initial")
+                    self.model.addConstr(self.motivation_i[i ,t, s, 1] == 0)
 
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
@@ -116,10 +117,6 @@ class MasterProblem:
         self.model.Params.QCPDual = 1
         self.model.Params.OutputFlag = 0
         self.model.optimize()
-
-
-    def writeModel(self):
-        self.model.write("master.lp")
 
     def File2Log(self):
         self.model.Params.LogToConsole = 1
@@ -165,7 +162,6 @@ class MasterProblem:
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
                 self.model.remove(current_cons)
                 self.cons_demand[t, s] = newcon
-                return newcon
 
     @property
     def current_iteration(self):
@@ -274,6 +270,7 @@ master.setStartSolution()
 master.File2Log()
 master.updateModel()
 master.solveRelaxModel()
+master.model.write("Initial.lp")
 print(f" Roster: {master.roster}")
 
 # Get Duals from MP
@@ -293,10 +290,12 @@ while (modelImprovable) and itr < max_itr:
     master.solveRelaxModel()
     objValHistRMP.append(master.getObjValues())
     print('*Current RMP ObjVal: ', objValHistRMP)
+    master.model.write(f"LP-Iteration-{itr}.lp")
 
 
     # Get Duals
     duals_i = master.getDuals_i()
+    print(f"Duals in Iteration {itr}: {duals_i}")
     duals_ts = master.getDuals_ts()
 
     # Solve SPs
@@ -327,6 +326,7 @@ while (modelImprovable) and itr < max_itr:
 
 # Solve MP
 master.finalSolve(3600, 0.01)
+master.writeModel()
 
 # Results
 master.writeModel()

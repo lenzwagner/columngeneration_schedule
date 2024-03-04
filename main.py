@@ -2,7 +2,6 @@ from gurobipy import *
 import gurobipy as gu
 import pandas as pd
 import os
-import itertools
 import time
 import seaborn
 import matplotlib.pyplot as plt

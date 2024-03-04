@@ -197,10 +197,14 @@ class Subproblem:
         self.Max = 5
         self.Min = 2
         self.M = M
-        self.alpha = 0.5
         self.model = gu.Model("Subproblem")
         self.index = i
         self.itr = itr
+        self.alpha = {}
+        for t in self.days:
+            value = random.random()
+            key = (self.index, t)
+            self.alpha[key] = value
 
     def buildModel(self):
         self.generateVariables()
@@ -217,7 +221,7 @@ class Subproblem:
     def generateConstraints(self):
         for i in [self.index]:
             for t in self.days:
-                self.model.addConstr(self.mood[i, t] == 1 - self.alpha * self.y[i, t])
+                self.model.addConstr(self.mood[i, t] == 1 - self.alpha[i, t])
                 self.model.addConstr(quicksum(self.x[i, t, s] for s in self.shifts) == self.y[i, t])
                 self.model.addConstr(gu.quicksum(self.x[i, t, s] for s in self.shifts) <= 1)
 

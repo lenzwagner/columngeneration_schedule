@@ -10,8 +10,9 @@ clear = lambda: os.system('cls')
 clear()
 
 # General Prerequisites
-if os.path.exists("model.lp"):
-    os.remove("model.lp")
+for file in os.listdir():
+    if file.endswith('.lp') or file.endswith('.sol') or file.endswith('.txt'):
+        os.remove(file)
 
 # Create DF out of Sets
 I_list = [1, 2, 3]
@@ -157,11 +158,8 @@ class MasterProblem:
                 new_coef = self.newcoef
                 qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex], new_coef)
                 rhs = current_cons.getAttr('QCRHS')
-                print(f"RHS: {rhs}")
                 sense = current_cons.getAttr('QCSense')
-                print(f"Sense: {sense}")
                 name = current_cons.getAttr('QCName')
-                print(f"Name: {name}")
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
                 self.model.remove(current_cons)
                 self.cons_demand[t, s] = newcon
@@ -169,18 +167,19 @@ class MasterProblem:
     def addLambda(self, index, itr):
         self.nurseIndex = index
         self.rosterIndex = itr + 1
-        for i in self.nurseIndex:
-            self.newlmbcoef = 1.0
-            current_lmb_cons = self.cons_lmbda[i]
-            expr = self.model.getRow(current_lmb_cons)
-            new_lmbcoef = self.newlmbcoef
-            expr.add(self.lmbda[self.nurseIndex, self.rosterIndex], new_lmbcoef)
-            rhs_lmb = current_lmb_cons.getAttr('RHS')
-            sense_lmb = current_lmb_cons.getAttr('Sense')
-            name_lmb = current_lmb_cons.getAttr('ConstrName')
-            newconlmb = self.model.addConstr(expr, sense_lmb, rhs_lmb, name_lmb)
-            self.model.remove(current_lmb_cons)
-            self.cons_lmbda[i] = newconlmb
+        print(f"I: {self.nurseIndex}")
+        print(f"R: {self.rosterIndex}")
+        self.newlmbcoef = 1.0
+        current_lmb_cons = self.cons_lmbda[self.nurseIndex]
+        expr = self.model.getRow(current_lmb_cons)
+        new_lmbcoef = self.newlmbcoef
+        expr.add(self.lmbda[self.nurseIndex, self.rosterIndex], new_lmbcoef)
+        rhs_lmb = current_lmb_cons.getAttr('RHS')
+        sense_lmb = current_lmb_cons.getAttr('Sense')
+        name_lmb = current_lmb_cons.getAttr('ConstrName')
+        newconlmb = self.model.addConstr(expr, sense_lmb, rhs_lmb, name_lmb)
+        self.model.remove(current_lmb_cons)
+        self.cons_lmbda[self.nurseIndex] = newconlmb
 
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
@@ -329,7 +328,7 @@ while (modelImprovable) and itr < max_itr:
             ScheduleCuts = subproblem.getNewSchedule()
             master.addColumn(ScheduleCuts)
             master.modifyConstraint(index, itr)
-            #master.addLambda(index, itr)
+            master.addLambda(index, itr)
             master.updateModel()
             modelImprovable = True
     master.updateModel()

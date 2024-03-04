@@ -6,8 +6,8 @@ import os
 import math
 
 # Path
-os.chdir(r'/Users/lorenzwagner/Library/CloudStorage/GoogleDrive-lorenz.wagner99@gmail.com/Meine Ablage/Doktor/Dissertation/Paper 1/Input')
-#os.chdir(r'G:\Meine Ablage\Doktor\Dissertation\Paper 1\Input')
+#os.chdir(r'/Users/lorenzwagner/Library/CloudStorage/GoogleDrive-lorenz.wagner99@gmail.com/Meine Ablage/Doktor/Dissertation/Paper 1/Input')
+os.chdir(r'G:\Meine Ablage\Doktor\Dissertation\Paper 1\Input')
 
 # Sets
 work = pd.read_excel('Arzt.xlsx',sheet_name='Arzt')
@@ -67,6 +67,7 @@ class Problem:
         self.Max_WD = 5
         self.LL = range(1, self.Max_WD + 1)
         self.F_S = [(3, 1), (3, 2), (2, 1)]
+        self.Days = len(self.T)
 
     def buildLinModel(self):
         self.generateVariables()
@@ -90,10 +91,10 @@ class Problem:
         self.q = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.BINARY, name="q")
         self.rho = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.BINARY, name="rho")
         self.z = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.BINARY, name="z")
-        self.perf = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.CONTINUOUS, name="perf")
-        self.p = self.model.addVars(self.I, self.T, vtype=gu.GRB.CONTINUOUS, name="p")
-        self.n = self.model.addVars(self.I, self.T, vtype=gu.GRB.INTEGER, lb=0, name="n")
-        self.n_h = self.model.addVars(self.I, self.T, vtype=gu.GRB.INTEGER, lb=0, name="n_h")
+        self.perf = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.CONTINUOUS, lb=0, ub = 1, name="perf")
+        self.p = self.model.addVars(self.I, self.T, vtype=gu.GRB.CONTINUOUS, lb=0, ub = 1, name="p")
+        self.n = self.model.addVars(self.I, self.T, vtype=gu.GRB.INTEGER, ub = self.Days, lb=0, name="n")
+        self.n_h = self.model.addVars(self.I, self.T, vtype=gu.GRB.INTEGER, lb=0, ub = self.Days, name ="n_h")
         self.h = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="h")
         self.e = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="e")
         self.kappa = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="kappa")
@@ -102,7 +103,7 @@ class Problem:
         self.r = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="r")
         self.f = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="f")
         self.g = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="g")
-        self.gg = self.model.addVars(self.I, self.T, name="gg")
+        self.gg = self.model.addVars(self.I, self.T, vtype=gu.GRB.CONTINUOUS, lb = -gu.GRB.INFINITY, ub = gu.GRB.INFINITY, name ="gg")
 
     def genGenCons(self):
         for t in T:

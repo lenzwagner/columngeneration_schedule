@@ -58,12 +58,12 @@ class MasterProblem:
 
     def generateConstraints(self):
         for i in self.nurses:
-            self.cons_lmbda[i] = self.model.addConstr(gu.quicksum(self.lmbda[i, r] for r in self.rosterinitial) == 1)
+            self.cons_lmbda[i] = self.model.addConstr(gu.quicksum(self.lmbda[i, r] for r in self.rosterinitial) == 1, name = "lmb("+str(i)+")")
         for t in self.days:
             for s in self.shifts:
                 self.cons_demand[t, s] = self.model.addConstr(
                     gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.rosterinitial) +
-                    self.slack[t, s] >= self.demand[t, s])
+                    self.slack[t, s] >= self.demand[t, s], "demand("+str(t)+","+str(s)+")")
         return self.cons_lmbda, self.cons_demand
 
     def generateObjective(self):
@@ -79,6 +79,7 @@ class MasterProblem:
 
     def getDuals_i(self):
         Pi_cons_lmbda = self.model.getAttr("Pi", self.cons_lmbda)
+        print(f"Duals_Pi:{Pi_cons_lmbda}")
         return Pi_cons_lmbda
 
     def getDuals_ts(self):
@@ -157,20 +158,35 @@ class MasterProblem:
                 new_coef = self.newcoef
                 qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex], new_coef)
                 rhs = current_cons.getAttr('QCRHS')
+                print(f"RHS: {rhs}")
                 sense = current_cons.getAttr('QCSense')
+                print(f"Sense: {sense}")
                 name = current_cons.getAttr('QCName')
+                print(f"Name: {name}")
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
                 self.model.remove(current_cons)
                 self.cons_demand[t, s] = newcon
 
-    @property
-    def current_iteration(self):
-        return self._current_iteration
+    def addLambda(self, index, itr):
+        self.nurseIndex = index
+        self.rosterIndex = itr + 1
+        for i in self.nurseIndex:
+            self.newlmbcoef = 1.0
+            current_lmb_cons = self.cons_lmbda[i]
+            expr = self.model.getRow(current_lmb_cons)
+            new_lmbcoef = self.newlmbcoef
+            expr.add(self.lmbda[self.nurseIndex, self.rosterIndex], new_lmbcoef)
+            rhs_lmb = current_lmb_cons.getAttr('RHS')
+            sense_lmb = current_lmb_cons.getAttr('Sense')
+            name_lmb = current_lmb_cons.getAttr('ConstrName')
+            newconlmb = self.model.addConstr(expr, sense_lmb, rhs_lmb, name_lmb)
+            self.model.remove(current_lmb_cons)
+            self.cons_lmbda[i] = newconlmb
 
-    @current_iteration.setter
-    def current_iteration(self, value):
-        self.roster.append(value)
-        self._current_iteration = value
+    def checkForQuadraticCons(self):
+        self.qconstrs = self.model.getQConstrs()
+        print(f"Check for quadratic constraintrs {self.qconstrs}")
+
 
 
 class Subproblem:
@@ -271,7 +287,7 @@ master.File2Log()
 master.updateModel()
 master.solveRelaxModel()
 master.model.write("Initial.lp")
-print(f" Roster: {master.roster}")
+master.model.write(f"Sol-{itr}.sol")
 
 # Get Duals from MP
 duals_i = master.getDuals_i()
@@ -290,8 +306,6 @@ while (modelImprovable) and itr < max_itr:
     master.solveRelaxModel()
     objValHistRMP.append(master.getObjValues())
     print('*Current RMP ObjVal: ', objValHistRMP)
-    master.model.write(f"LP-Iteration-{itr}.lp")
-
 
     # Get Duals
     duals_i = master.getDuals_i()
@@ -316,13 +330,17 @@ while (modelImprovable) and itr < max_itr:
             ScheduleCuts = subproblem.getNewSchedule()
             master.addColumn(ScheduleCuts)
             master.modifyConstraint(index, itr)
+            #master.addLambda(index, itr)
             master.updateModel()
             modelImprovable = True
     master.updateModel()
+    master.model.write(f"LP-Iteration-{itr}.lp")
+
 
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
+    print('*End CG iteration: ', itr)
 
 # Solve MP
 master.finalSolve(3600, 0.01)

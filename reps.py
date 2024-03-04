@@ -70,12 +70,14 @@ class Problem:
 
     def buildLinModel(self):
         self.generateVariables()
-        self.generateLinConstraints()
+        self.genGenCons()
+        self.genChangesCons()
+        self.genRegCons()
         self.linRecovery()
         self.linPerformance()
         self.generateObjective()
         self.ModelParams()
-        self.model.update()
+        self.updateModel()
 
     def generateVariables(self):
         self.x = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.BINARY, name="x")
@@ -102,23 +104,22 @@ class Problem:
         self.g = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="g")
         self.gg = self.model.addVars(self.I, self.T, name="gg")
 
-    def generateLinConstraints(self):
+    def genGenCons(self):
+        for t in T:
+            for k in K:
+                self.model.addLConstr(
+                    gu.quicksum(self.perf[i, t, k] for i in self.I) + self.u[t, k] >= self.demand[t, k])
         for i in self.I:
             for t in self.T:
                 self.model.addLConstr(gu.quicksum(self.x[i, t, k] for k in self.K) <= 1)
                 self.model.addLConstr(gu.quicksum(self.x[i, t, k] for k in self.K) == self.y[i, t])
-                self.model.addLConstr(
-                    quicksum(self.y[i, ((u - 1) % self.End) + 1] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
-                self.model.addLConstr(quicksum(
-                    self.y[i, ((u - 1) % self.End) + 1] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
-                                                  self.y[i, (t % self.End) + 1] - self.y[i, ((t - 1) % self.End) + 1]))
-                for s in range(t + 1, t + self.Days_Off):
-                    self.model.addLConstr(1 + self.y[i, ((t - 1) % self.End) + 1] >= self.y[i, ((t - 2) % self.End) + 1] + self.y[
-                        i, ((s - 1) % self.End) + 1])
                 for k in self.K:
                     self.model.addLConstr(self.perf[i, t, k] >= self.p[i, t] - self.M * (1 - self.x[i, t, k]))
                     self.model.addLConstr(self.perf[i, t, k] <= self.p[i, t] + self.M * (1 - self.x[i, t, k]))
                     self.model.addLConstr(self.perf[i, t, k] <= self.x[i, t, k])
+
+    def genChangesCons(self):
+        for i in self.I:
             for k in self.K:
                 for t in self.T:
                     self.model.addLConstr(self.rho[i, t, k] <= 1 - self.q[i, t, k])
@@ -130,15 +131,22 @@ class Problem:
                 for t in range(1, len(self.T)):
                     self.model.addLConstr(self.q[i, t + 1, k] == self.x[i, t, k] + self.z[i, t, k])
             for t in self.T:
-                self.model.addLConstr(gu.quicksum(self.x[i, t, k] for k in self.K) + (1 - self.y[i, t]) == 1)
                 self.model.addLConstr(gu.quicksum(self.rho[i, t, k] for k in self.K) == self.sc[i, t])
+
+    def genRegCons(self):
+        for i in self.I:
+            for t in range(1, len(self.T) + 1 - self.Max_WD):
+                self.model.addLConstr(gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
+            for t in range(1, len(self.T) + 1 - self.Min_WD):
+                self.model.addLConstr(gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
+                            self.y[i, t + 1] - self.y[i, t]))
             for k1, k2 in self.F_S:
                 for t in range(1, len(self.T)):
-                    self.model.addLConstr(self.x[i, ((t - 2) % self.End) + 1, k1] + self.x[i, ((t - 1) % self.End) + 1, k2] <= 1)
-        for t in self.T:
-            for k in self.K:
-                self.model.addLConstr(
-                    gu.quicksum(self.perf[i, t, k] for i in self.I) + self.u[t, k] >= self.demand[t, k])
+                    self.model.addLConstr(self.x[i, t, k1] + self.x[i, t + 1, k2] <= 1)
+        for t in range(2, len(self.T) - self.Days_Off + 2):
+            for i in self.I:
+                for s in range(t + 1, t + self.Days_Off):
+                    self.model.addLConstr(1 + self.y[i, t] >= self.y[i, t - 1] + self.y[i, s])
 
     def linRecovery(self):
         for i in self.I:
@@ -165,7 +173,6 @@ class Problem:
                 self.model.addLConstr(self.n_h[i, t] <= self.n[i, t - 1] + self.sc[i, t])
                 self.model.addLConstr(self.n_h[i, t] >= (self.n[i, t - 1] + self.sc[i, t]) - self.M * self.r[i, t])
                 self.model.addLConstr(self.n_h[i, t] <= self.M * (1 - self.r[i, t]))
-                # self.model.addLConstr(self.n[i, t] == (self.n[i, t - 1] + self.sc[i, t]) * (1 - self.r[i, t]) - self.e[i, t] + self.b[i, t])
                 self.model.addLConstr(self.p[i, t] == 1 - self.epsilon * self.n[i, t] - self.xi * self.kappa[i, t])
                 self.model.addLConstr(self.omega * self.h[i, t] <= self.n[i, t])
                 self.model.addLConstr(self.n[i, t] <= ((self.omega - 1) + self.h[i, t]))
@@ -202,7 +209,6 @@ class Problem:
 
     def ModelParams(self):
         self.model.Params.OutputFlag = 1
-        #self.model.Params.QCPDual = 1
 
     def writeModel(self):
         self.model.write("model.lp")
@@ -217,7 +223,7 @@ class Problem:
         return value
 
     def optValues(self):
-        values = self.model.getAttr("X")
+        values = self.model.getAttr("X", self.x)
         print(values)
 
     def checkForQuadraticCons(self):
@@ -227,7 +233,6 @@ class Problem:
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setParam('MIPGap', EPS)
-        self.model.update()
         self.model.optimize()
         self.model.write("final.lp")
         if self.model.status == GRB.OPTIMAL:
@@ -365,8 +370,7 @@ problem = Problem(DataDF, Demand_Dict)
 problem.buildLinModel()
 problem.updateModel()
 problem.checkForQuadraticCons()
-problem.solveModel(3600, 1e16)
+problem.model.optimize()
 problem.optValues()
 
-problem.calc_perf()
 problem.calc_understaffing()

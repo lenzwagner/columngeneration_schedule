@@ -4,7 +4,6 @@ import pandas as pd
 import os
 import time
 import seaborn
-import random
 import matplotlib.pyplot as plt
 
 clear = lambda: os.system('cls')
@@ -26,10 +25,6 @@ DataDF = pd.concat([I_list1, T_list1, K_list1], axis=1)
 Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}
-
-# Create alpha
-random.seed(1234)
-alpha = {(i, t): round(random.random(), 3) for i in I_list for t in T_list}
 
 
 class MasterProblem:
@@ -77,6 +72,7 @@ class MasterProblem:
 
     def solveRelaxModel(self):
         self.model.Params.QCPDual = 1
+        self.model.Params.NonConvex = 2
         for v in self.model.getVars():
             v.setAttr('vtype', 'C')
         self.model.optimize()
@@ -98,9 +94,16 @@ class MasterProblem:
         self.model.update()
 
     def addColumn(self, newSchedule):
-        self.newvar["motivation_i"] = {}
+        self.nurseIndex = index
+        self.rosterIndex = itr + 1
+        self.newvar = {}
+        colName = f"Schedule[{self.nurseIndex},{self.rosterIndex}]"
+        newScheduleList = []
         for i, t, s, r in newSchedule:
-            self.newvar["motivation_i"][(i, t, s, r)] = newSchedule[i, t, s, r]
+            newScheduleList.append(newSchedule[i, t, s, r])
+        Column = gu.Column([], [])
+        self.newvar = self.model.addVar(vtype=gu.GRB.CONTINUOUS, lb=0, column=Column, name=colName)
+        self.current_iteration = itr
         self.model.update()
 
     def setStartSolution(self):
@@ -125,30 +128,40 @@ class MasterProblem:
         value = obj.getValue()
         return value
 
-    def checkForQuadraticCons(self):
-        self.qconstrs = self.model.getQConstrs()
-        print(f"Check for quadratic constraintrs {self.qconstrs}")
-
-    def printLambdas(self):
-        return self.model.getAttr("X", self.lmbda)
+    def finalSolve(self, timeLimit, EPS):
+        self.model.setParam('TimeLimit', timeLimit)
+        self.model.setParam('MIPGap', EPS)
+        self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
+        self.model.update()
+        self.model.optimize()
+        self.model.write("dd.lp")
+        if self.model.status == GRB.OPTIMAL:
+            print("Optimal solution found")
+            for i in self.nurses:
+                for t in self.days:
+                    for s in self.shifts:
+                        for r in self.roster:
+                            print(f"Nurse {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
+        else:
+            print("No optimal solution found.")
 
     def modifyConstraint(self, index, itr):
         self.nurseIndex = index
         self.rosterIndex = itr + 1
+        print(f"RosterIndex: {self.rosterIndex}")
         for t in self.days:
             for s in self.shifts:
-                qexpr = self.model.getQCRow(self.cons_demand[t, s])
-                for i, j, k, l in self.newvar["motivation_i"]:
-                    if i != self.nurseIndex:
-                        new_coef = self.newvar["motivation_i"][(i, j, k, l)] * self.newvar["motivation_i"][
-                            (self.nurseIndex, t, s, self.rosterIndex)]
-                        qexpr.add(self.motivation_i[i, j, k, l] * self.lmbda[self.nurseIndex, self.rosterIndex],
-                                  new_coef)
-                rhs = self.cons_demand[t, s].getAttr('QCRHS')
-                sense = self.cons_demand[t, s].getAttr('QCSense')
-                name = self.cons_demand[t, s].getAttr('QCName')
+                self.newcoef = 1.0
+                current_cons = self.cons_demand[t, s]
+                qexpr = self.model.getQCRow(current_cons)
+                new_var = self.newvar
+                new_coef = self.newcoef
+                qexpr.add(new_var * self.lmbda[self.nurseIndex, self.rosterIndex], new_coef)
+                rhs = current_cons.getAttr('QCRHS')
+                sense = current_cons.getAttr('QCSense')
+                name = current_cons.getAttr('QCName')
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
-                self.model.remove(self.cons_demand[t, s])
+                self.model.remove(current_cons)
                 self.cons_demand[t, s] = newcon
 
     def addLambda(self, index, itr):
@@ -164,35 +177,18 @@ class MasterProblem:
         rhs_lmb = current_lmb_cons.getAttr('RHS')
         sense_lmb = current_lmb_cons.getAttr('Sense')
         name_lmb = current_lmb_cons.getAttr('ConstrName')
-        newconlmb = self.model.addLConstr(expr, sense_lmb, rhs_lmb, name_lmb)
+        newconlmb = self.model.addConstr(expr, sense_lmb, rhs_lmb, name_lmb)
         self.model.remove(current_lmb_cons)
         self.cons_lmbda[self.nurseIndex] = newconlmb
 
-    def finalSolve(self, timeLimit, EPS):
-        self.model.setParam('TimeLimit', timeLimit)
-        self.model.setParam('MIPGap', EPS)
-        self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
-        self.model.update()
-        self.model.optimize()
-        if self.model.status == GRB.OPTIMAL:
-            print("Optimal solution found")
-            for i in self.nurses:
-                for r in self.roster:
-                    if self.lmbda[i, r].x == 1:
-                        for t in self.days:
-                            for s in self.shifts:
-                                print(
-                                    f"Nurse {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
-        else:
-            print("No optimal solution found.")
+    def checkForQuadraticCons(self):
+        self.qconstrs = self.model.getQConstrs()
+        print(f"Check for quadratic constraintrs {self.qconstrs}")
 
-    def finalObj(self):
-        obj = self.model.getObjective()
-        value = obj.getValue()
-        return value
+
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, dfData, i, M, iteration, alph):
+    def __init__(self, duals_i, duals_ts, dfData, i, M, iteration):
         itr = iteration + 1
         self.days = dfData['T'].dropna().astype(int).unique().tolist()
         self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
@@ -201,10 +197,10 @@ class Subproblem:
         self.Max = 5
         self.Min = 2
         self.M = M
+        self.alpha = 0.5
         self.model = gu.Model("Subproblem")
         self.index = i
         self.itr = itr
-        self.alpha = alph
 
     def buildModel(self):
         self.generateVariables()
@@ -221,7 +217,7 @@ class Subproblem:
     def generateConstraints(self):
         for i in [self.index]:
             for t in self.days:
-                self.model.addConstr(self.mood[i, t] == 1 - self.alpha[i, t] * self.y[i, t])
+                self.model.addConstr(self.mood[i, t] == 1 - self.alpha * self.y[i, t])
                 self.model.addConstr(quicksum(self.x[i, t, s] for s in self.shifts) == self.y[i, t])
                 self.model.addConstr(gu.quicksum(self.x[i, t, s] for s in self.shifts) <= 1)
 
@@ -268,11 +264,12 @@ class Subproblem:
         else:
             print("No optimal solution found.")
 
+
 #### Column Generation
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 4
+max_itr = 2
 itr = 0
 
 # Lists
@@ -283,7 +280,6 @@ avg_rc_hist = []
 # Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
 master.buildModel()
-print("Restricted master problem successfully built!")
 master.setStartSolution()
 master.File2Log()
 master.updateModel()
@@ -306,8 +302,6 @@ while (modelImprovable) and itr < max_itr:
     master.current_iteration = itr + 1
     print(f"Current Roster: {master.roster}")
     master.solveRelaxModel()
-    lambdas = master.printLambdas()
-    print(f"Lambdas: {lambdas}")
     objValHistRMP.append(master.getObjValues())
     print('*Current RMP ObjVal: ', objValHistRMP)
 
@@ -319,17 +313,17 @@ while (modelImprovable) and itr < max_itr:
     # Solve SPs
     modelImprovable = False
     for index in I_list:
-        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, alpha)
+        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr)
         subproblem.buildModel()
         subproblem.solveModel(3600, 1e-6)
         val = subproblem.getOptValues()
-        print(f" Opt. Values for nurse {index}: {val}")
+        print(f" Opt. Values {val}")
         status = subproblem.getStatus()
         if status != 2:
             raise Exception("Pricing-Problem can not reach optimality!")
         reducedCost = subproblem.getObjVal()
         objValHistSP.append(reducedCost)
-        print(f'*Reduced cost; Iteration {itr}', reducedCost)
+        print('*Reduced cost', reducedCost)
         if reducedCost < -1e-6:
             ScheduleCuts = subproblem.getNewSchedule()
             master.addColumn(ScheduleCuts)
@@ -344,16 +338,14 @@ while (modelImprovable) and itr < max_itr:
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
-    print("Master problem successfully updated!")
     print('*End CG iteration: ', itr)
 
 # Solve MP
 master.finalSolve(3600, 0.01)
-final_obj = master.finalObj()
-master.model.write("IP.lp")
-master.model.write("IP.sol")
+master.writeModel()
 
 # Results
+master.writeModel()
 print('*                 *****Results*****                  \n*')
 print('*Total iteration: ', itr)
 t1 = time.time()
@@ -364,14 +356,10 @@ print('*Exact solution:', master.getObjValues())
 seaborn.set(style='darkgrid')
 seaborn.scatterplot(x=list(range(len(avg_rc_hist))), y=avg_rc_hist)
 plt.xlabel('Iterations')
-plt.xticks(range(1,len(avg_rc_hist)))
+plt.xticks(range(0,len(avg_rc_hist)))
 plt.ylabel('Objective function value')
 title = 'Solution: ' + str(avg_rc_hist[-1])
 plt.title(title)
 plt.show()
+print(objValHistSP)
 print(objValHistRMP)
-
-
-print('The relaxed feasible solution found by solver is:', objValHistRMP[-1])
-print('The integer feasible solution found by solver is:', final_obj)
-print('The GAP is:',final_obj/(final_obj-objValHistRMP[-1]))

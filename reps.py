@@ -5,9 +5,12 @@ import pandas as pd
 import os
 import math
 
+
 # Path
 #os.chdir(r'/Users/lorenzwagner/Library/CloudStorage/GoogleDrive-lorenz.wagner99@gmail.com/Meine Ablage/Doktor/Dissertation/Paper 1/Input')
 os.chdir(r'G:\Meine Ablage\Doktor\Dissertation\Paper 1\Input')
+
+
 
 # Sets
 work = pd.read_excel('Arzt.xlsx',sheet_name='Arzt')
@@ -56,6 +59,7 @@ class Problem:
         self.mu = 0.1
         self.epsilon = 1e-6
         self.mue = 0.1
+        self.zeta = 0.1
         self.chi = 5
         self.omega = math.floor(1 / 1e-6)
         self.M = len(self.T) + self.omega
@@ -103,6 +107,7 @@ class Problem:
         self.r = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="r")
         self.f = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="f")
         self.g = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="g")
+        self.w = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name="w")
         self.gg = self.model.addVars(self.I, self.T, vtype=gu.GRB.CONTINUOUS, lb = -gu.GRB.INFINITY, ub = gu.GRB.INFINITY, name ="gg")
 
     def genGenCons(self):
@@ -149,7 +154,7 @@ class Problem:
                 for s in range(t + 1, t + self.Days_Off):
                     self.model.addLConstr(1 + self.y[i, t] >= self.y[i, t - 1] + self.y[i, s])
 
-    def linRecovery(self):
+    def fullRecovery(self):
         for i in self.I:
             for t in range(1 + self.chi, len(self.T) + 1):
                 self.model.addLConstr((1 - self.r[i, t]) <= (1 - self.f[i, t - 1]) + gu.quicksum(
@@ -162,6 +167,16 @@ class Problem:
                 for tau in range(1, t + 1):
                     self.model.addLConstr(self.f[i, t] >= self.sc[i, tau])
                 self.model.addLConstr(self.f[i, t] <= gu.quicksum(self.sc[i, tau] for tau in range(1, t + 1)))
+
+    def linRecovery(self):
+        for i in self.I:
+            for t in range(2, len(self.T)+1):
+                self.model.addLConstr(self.p[i, t] <= 1)
+                self.model.addLConstr(self.p[i, t] <= (1 - self.epsilon * self.n_h[i, t] + self.zeta * self.r[i ,t]))
+                self.model.addLConstr(self.p[i, t] >= 1 - self.M * self.w[i, t])
+                self.model.addLConstr(self.p[i, t] >= (1 - self.epsilon * self.n_h[i, t] + self.zeta * self.r[i ,t]) - self.M * (1 - self.w[i, t]))
+                self.model.addLConstr((1 - self.epsilon * self.n_h[i, t] + self.zeta * self.r[i ,t]) - 1 <= self.M * self.w[i, t])
+                self.model.addLConstr(1 - (1 - self.epsilon * self.n_h[i, t] + self.zeta * self.r[i ,t]) <= self.M * (1 - self.w[i, t]))
 
     def linPerformance(self):
         for i in self.I:

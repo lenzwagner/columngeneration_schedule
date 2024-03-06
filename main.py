@@ -110,9 +110,8 @@ class MasterProblem:
                 for s in self.shifts:
                     self.model.addConstr(self.motivation_i[i ,t, s, 1] == 0)
 
-    def solveModel(self, timeLimit, EPS):
+    def solveModel(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
-        self.model.setParam('MIPGap', EPS)
         self.model.Params.QCPDual = 1
         self.model.Params.OutputFlag = 0
         self.model.optimize()
@@ -174,7 +173,6 @@ class MasterProblem:
 
     def finalSolve(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
-        self.model.setParam('MIPGap', EPS)
         self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
         self.model.update()
         self.model.optimize()
@@ -257,7 +255,6 @@ class Subproblem:
 
     def solveModel(self, timeLimit, EPS):
         self.model.setParam('TimeLimit', timeLimit)
-        self.model.setParam('MIPGap', EPS)
         self.model.Params.OutputFlag = 0
         self.model.optimize()
         if self.model.status == gu.GRB.OPTIMAL:
@@ -323,7 +320,7 @@ while (modelImprovable) and itr < max_itr:
     for index in I_list:
         subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, alpha)
         subproblem.buildModel()
-        subproblem.solveModel(3600, 1e-6)
+        subproblem.solveModel(3600)
         val = subproblem.getOptValues()
         print(f" Opt. Values {val}")
         status = subproblem.getStatus()
@@ -350,7 +347,7 @@ while (modelImprovable) and itr < max_itr:
     print('*End CG iteration: ', itr)
 
 # Solve MP
-master.finalSolve(3600, 0.01)
+master.finalSolve(3600)
 final_obj = master.finalObj()
 
 # Results

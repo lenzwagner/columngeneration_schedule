@@ -322,7 +322,7 @@ while (modelImprovable) and itr < max_itr:
         subproblem.buildModel()
         subproblem.solveModel(3600)
         val = subproblem.getOptValues()
-        print(f" Optimal Values {val}")
+        print(f" Opt. Values {val}")
         status = subproblem.getStatus()
         if status != 2:
             raise Exception("Pricing-Problem can not reach optimality!")

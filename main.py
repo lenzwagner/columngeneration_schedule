@@ -412,7 +412,7 @@ else:
     print("*{:^78}*".format("CG and normal solver are equally fast: " + str(time_problem) + " seconds"))
 print("*" * 80)
 
-# Plots
+# Print Plots
 plot_obj_val(objValHistRMP)
 plot_avg_rc(avg_rc_hist)
 plot_together(objValHistRMP, avg_rc_hist)

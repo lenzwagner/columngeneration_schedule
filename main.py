@@ -3,9 +3,9 @@ import gurobipy as gu
 import pandas as pd
 import os
 import time
-import seaborn
-import random
+import seaborn as sns
 import matplotlib.pyplot as plt
+import random
 
 clear = lambda: os.system('cls')
 clear()
@@ -15,7 +15,7 @@ for file in os.listdir():
     if file.endswith('.lp') or file.endswith('.sol') or file.endswith('.txt'):
         os.remove(file)
 
-# Create DF out of Sets
+# Create Dataframes
 I_list = [1, 2, 3]
 T_list = [1, 2, 3, 4, 5, 6, 7]
 K_list = [1, 2, 3]
@@ -27,11 +27,15 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}
 
+# Generate Alpha
+def gen_alpha(seed):
+    random.seed(seed)
+    alpha = {(i, t): round(random.random(), 3) for i in I_list for t in T_list}
+    return alpha
 
-random.seed(123)
-alpha = {(i, t): round(random.random(), 3) for i in I_list for t in T_list}
-print(alpha)
-
+# General Parameter
+time_Limit = 3600
+max_itr = 10
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -79,7 +83,7 @@ class MasterProblem:
     def solveRelaxModel(self):
         self.model.Params.QCPDual = 1
         for v in self.model.getVars():
-            v.setAttr('vtype', 'CONTINOUS')
+            v.setAttr('vtype', 'C')
         self.model.optimize()
 
     def getDuals_i(self):
@@ -91,17 +95,7 @@ class MasterProblem:
         Pi_cons_demand = self.model.getAttr("QCPi", self.cons_demand)
         return Pi_cons_demand
 
-    def getObjValues(self):
-        obj = self.model.objVal
-        return obj
-
     def updateModel(self):
-        self.model.update()
-
-    def addColumn(self, newSchedule):
-        self.newvar["motivation_i"] = {}
-        for i, t, s, r in newSchedule:
-            self.newvar["motivation_i"][(i, t, s, r)] = newSchedule[i, t, s, r]
         self.model.update()
 
     def setStartSolution(self):
@@ -120,29 +114,20 @@ class MasterProblem:
         self.model.Params.LogToConsole = 1
         self.model.Params.LogFile = "./log.txt"
 
-    def getObjVal(self):
-        obj = self.model.getObjective()
-        value = obj.getValue()
-        return value
-
-    def modifyConstraint(self, index, itr):
+    def addColumn(self, index, itr, schedule):
         self.nurseIndex = index
         self.rosterIndex = itr + 1
         for t in self.days:
             for s in self.shifts:
                 qexpr = self.model.getQCRow(self.cons_demand[t, s])
-                for i, j, k, l in self.newvar["motivation_i"]:
-                    if i != self.nurseIndex:
-                        new_coef = self.newvar["motivation_i"][(i, j, k, l)] * self.newvar["motivation_i"][
-                            (self.nurseIndex, t, s, self.rosterIndex)]
-                        qexpr.add(self.motivation_i[i, j, k, l] * self.lmbda[self.nurseIndex, self.rosterIndex],
-                                  new_coef)
+                qexpr.add(schedule[self.nurseIndex, t, s, self.rosterIndex] * self.lmbda[self.nurseIndex, self.rosterIndex], 1)
                 rhs = self.cons_demand[t, s].getAttr('QCRHS')
                 sense = self.cons_demand[t, s].getAttr('QCSense')
                 name = self.cons_demand[t, s].getAttr('QCName')
                 newcon = self.model.addQConstr(qexpr, sense, rhs, name)
                 self.model.remove(self.cons_demand[t, s])
                 self.cons_demand[t, s] = newcon
+        self.model.update()
 
     def addLambda(self, index, itr):
         self.nurseIndex = index
@@ -161,7 +146,7 @@ class MasterProblem:
 
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
-        print(f"Check for quadratic constraintrs {self.qconstrs}")
+        print(f"* Check for quadratic constraintrs {self.qconstrs}")
 
     def finalObj(self):
         obj = self.model.getObjective()
@@ -179,15 +164,15 @@ class MasterProblem:
         self.model.write("Final.lp")
         self.model.write("Final.sol")
         if self.model.status == GRB.OPTIMAL:
-            print("Optimal solution found")
+            print("* Optimal solution found")
             for i in self.nurses:
                 for r in self.roster:
                     if self.lmbda[i, r].x == 1:
                         for s in self.shifts:
                             for t in self.days:
-                                print(f"Nurse {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
+                                print(f"* Nurse {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
         else:
-            print("No optimal solution found.")
+            print("* No optimal solution found.")
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration, alpha):
@@ -242,13 +227,8 @@ class Subproblem:
         return self.model.getAttr("X", self.motivation)
 
     def getOptValues(self):
-        d = self.model.getAttr("X", self.motivation)
-        return d
-
-    def getObjVal(self):
-        obj = self.model.getObjective()
-        value = obj.getValue()
-        return value
+        opt_moti = self.model.getAttr("X", self.motivation)
+        return opt_moti
 
     def getStatus(self):
         return self.model.status
@@ -258,20 +238,19 @@ class Subproblem:
         self.model.Params.OutputFlag = 0
         self.model.optimize()
         if self.model.status == gu.GRB.OPTIMAL:
-            print("Optimal solution found")
+            print("* Optimal solution found")
             for i in [self.index]:
                 for t in self.days:
                     for s in self.shifts:
-                        print(f"Nurse {self.index}: Motivation {self.x[i, t, s].x} in Shift {s} on day {t}")
+                        print(f"* Nurse {self.index}: Motivation {self.x[i, t, s].x} in Shift {s} on day {t}")
         else:
-            print("No optimal solution found.")
+            print("* No optimal solution found.")
 
 
 #### Column Generation
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 2
 itr = 0
 
 # Lists
@@ -282,7 +261,7 @@ avg_rc_hist = []
 # Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
 master.buildModel()
-print("Restricted master problem successfully built!")
+print("* Restricted Master Problem successfully built!")
 master.setStartSolution()
 master.File2Log()
 master.updateModel()
@@ -294,50 +273,49 @@ master.model.write(f"Sol-{itr}.sol")
 duals_i = master.getDuals_i()
 duals_ts = master.getDuals_ts()
 
-print('*         *****Column Generation Iteration*****          \n*')
+print('*             *****Column Generation Iteration*****              *')
 t0 = time.time()
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
-    print('*Current CG iteration: ', itr)
+    print('* Current CG iteration: ', itr)
 
     # Solve RMP
     master.current_iteration = itr + 1
-    print(f"Current Roster: {master.roster}")
+    print(f"* Current Roster: {master.roster}")
     master.solveRelaxModel()
     lambdas = master.printLambdas()
-    print(f"Lambdas: {lambdas}")
-    objValHistRMP.append(master.getObjValues())
-    print('*Current RMP ObjVal: ', objValHistRMP)
+    print(f"* Lambdas: {lambdas}")
+    objValHistRMP.append(master.model.objval)
+    print('* Current RMP ObjVal: ', objValHistRMP)
 
     # Get Duals
     duals_i = master.getDuals_i()
-    print(f"Duals in Iteration {itr}: {duals_i}")
+    print(f"* Duals in Iteration {itr}: {duals_i}")
     duals_ts = master.getDuals_ts()
 
     # Solve SPs
     modelImprovable = False
     for index in I_list:
-        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, alpha)
+        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(123))
         subproblem.buildModel()
-        subproblem.solveModel(3600)
+        subproblem.solveModel(time_Limit)
         opt_val = subproblem.getOptValues()
         opt_val_rounded = {key: round(value, 3) for key, value in opt_val.items()}
-        print(f" Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}")
+        print(f"* Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}")
         status = subproblem.getStatus()
         if status != 2:
-            raise Exception("Pricing-Problem can not reach optimality!")
-        reducedCost = subproblem.getObjVal()
+            raise Exception("* Pricing-Problem can not reach optimality!")
+        reducedCost = subproblem.model.objval
         objValHistSP.append(reducedCost)
-        print('*Reduced cost', reducedCost)
+        print('* Reduced cost', reducedCost)
         if reducedCost < -1e-6:
-            ScheduleCuts = subproblem.getNewSchedule()
-            master.addColumn(ScheduleCuts)
-            master.modifyConstraint(index, itr)
+            Schedules = subproblem.getNewSchedule()
+            master.addColumn(index, itr, Schedules)
             master.addLambda(index, itr)
             master.updateModel()
             modelImprovable = True
-            print(f"Reduced-cost < 0 columns found...")
+            print(f"* Reduced-cost < 0 columns found...")
     master.updateModel()
     master.model.write(f"LP-Iteration-{itr}.lp")
 
@@ -345,30 +323,76 @@ while (modelImprovable) and itr < max_itr:
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
-    print('*End CG iteration: ', itr)
+    print('* End CG iteration: ', itr)
+
+    if not modelImprovable:
+        print("* No more improvable columns found.")
 
 # Solve MP
-master.finalSolve(3600)
-final_obj = master.finalObj()
+master.finalSolve(time_Limit)
+final_obj = master.model.objval
 
 # Results
-print('*                 *****Results*****                  \n*')
-print('*Total iteration: ', itr)
-t1 = time.time()
-print('*Total elapsed time: ', t1 - t0)
-print('*Exact solution:', master.getObjValues())
+print("*" * 70)
+print("*{:^68}*".format("*****Results*****"))
+print("*{:^68}*".format(""))
+print("*{:^68}*".format("Total iterations: " + str(itr)))
+total = round((time.time() - t0), 2)
+print("*{:^68}*".format("Total elapsed time: " + str(total)))
+print("*{:^68}*".format("Final solution: " + str(round(master.model.objval,3))))
+print("*{:^68}*".format(""))
+print("*{:^68}*".format("The relaxed feasible solution found by solver is: " + str(round(objValHistRMP[-1],3))))
+print("*{:^68}*".format("The integer feasible solution found by solver is: " + str(round(final_obj,3))))
+if round(final_obj,3)-round(objValHistRMP[-1],3) != 0:
+    print("*{:^68}*".format("The GAP is:",round(final_obj,3)/(round(final_obj,3)-round(objValHistRMP[-1],3))))
+else:
+    print("*{:^68}*".format("The GAP is undefined (division by zero)"))
+print("*" * 70)
 
-# Plot
-seaborn.set(style='darkgrid')
-seaborn.scatterplot(x=list(range(len(avg_rc_hist))), y=avg_rc_hist)
-plt.xlabel('Iterations')
-plt.xticks(range(0,len(avg_rc_hist)))
-plt.ylabel('Objective function value')
-title = 'Solution: ' + str(avg_rc_hist[-1])
-plt.title(title)
-plt.show()
-print(objValHistRMP)
+def plot_obj_val(objValHistRMP):
+    sns.set(style='darkgrid')
+    sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o')
+    sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP)
+    plt.xlabel('CG Iterations')
+    plt.xticks(range(0, len(objValHistRMP)))
+    plt.ylabel('Objective function value')
+    title = 'Optimal objective value: ' + str(round(objValHistRMP[-1], 2))
+    plt.title(title)
+    plt.show()
 
-print('The relaxed feasible solution found by solver is:', objValHistRMP[-1])
-print('The integer feasible solution found by solver is:', final_obj)
-print('The GAP is:',final_obj/(final_obj-objValHistRMP[-1]))
+def plot_avg_rc(avg_rc_hist):
+    sns.set(style='darkgrid')
+    sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o')
+    sns.lineplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist)
+    plt.xlabel('CG Iterations')
+    plt.xticks(range(1, len(avg_rc_hist)+1))
+    plt.ylabel('Reduced Cost')
+    title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
+    plt.title(title)
+    plt.show()
+
+def plot_together(objValHistRMP, avg_rc_hist):
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+
+    sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o', ax=axs[0])
+    sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, ax=axs[0])
+    axs[0].set_xlabel('CG Iterations')
+    axs[0].set_xticks(range(0, len(objValHistRMP)))
+    axs[0].set_ylabel('Objective function value')
+    title = 'Optimal objective value: ' + str(round(objValHistRMP[-1], 2))
+    axs[0].set_title(title)
+
+    sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o', ax=axs[1])
+    sns.lineplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, ax=axs[1])
+    axs[1].set_xlabel('CG Iterations')
+    axs[1].set_xticks(range(1, len(avg_rc_hist)+1))
+    axs[1].set_ylabel('Reduced Cost')
+    title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
+    axs[1].set_title(title)
+
+    plt.show()
+
+# Plots
+plot_obj_val(objValHistRMP)
+plot_avg_rc(avg_rc_hist)
+plot_together(objValHistRMP, avg_rc_hist)

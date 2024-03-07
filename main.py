@@ -4,6 +4,8 @@ import pandas as pd
 import os
 import time
 from plots import plot_obj_val, plot_avg_rc, plot_together
+from utilitiy import ListComp
+import textwrap
 import random
 
 clear = lambda: os.system('cls')
@@ -88,7 +90,6 @@ class MasterProblem:
 
     def getDuals_i(self):
         Pi_cons_lmbda = self.model.getAttr("Pi", self.cons_lmbda)
-        print(f"Duals_Pi:{Pi_cons_lmbda}")
         return Pi_cons_lmbda
 
     def getDuals_ts(self):
@@ -146,7 +147,7 @@ class MasterProblem:
 
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
-        print(f"* Check for quadratic constraintrs {self.qconstrs}")
+        print("*{:^88}*".format(f"Check for quadratic constraints {self.qconstrs}"))
 
     def finalObj(self):
         obj = self.model.objval
@@ -163,15 +164,15 @@ class MasterProblem:
         self.model.write("Final.lp")
         self.model.write("Final.sol")
         if self.model.status == GRB.OPTIMAL:
-            print("*" * 80)
-            print("*{:^78}*".format(""))
-            print("*{:^78}*".format("*****Optimal solution found*****"))
-            print("*{:^78}*".format(""))
+            print("*" * 90)
+            print("*{:^88}*".format(""))
+            print("*{:^88}*".format("***** Optimal solution found *****"))
+            print("*{:^88}*".format(""))
         else:
-            print("*" * 80)
-            print("*{:^78}*".format(""))
-            print("*{:^78}*".format("*****No ptimal solution found*****"))
-            print("*{:^78}*".format(""))
+            print("*" * 90)
+            print("*{:^88}*".format(""))
+            print("*{:^88}*".format("***** No optimal solution found *****"))
+            print("*{:^88}*".format(""))
 
 
 class Subproblem:
@@ -317,7 +318,11 @@ avg_rc_hist = []
 # Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
 master.buildModel()
-print("* Restricted Master Problem successfully built!")
+print("*" * 90)
+print("*{:^88}*".format(""))
+print("*{:^88}*".format("Restricted Master Problem successfully built!"))
+print("*{:^88}*".format(""))
+print("*" * 90)
 master.setStartSolution()
 master.File2Log()
 master.updateModel()
@@ -329,7 +334,12 @@ master.model.write(f"Sol-{itr}.sol")
 duals_i = master.getDuals_i()
 duals_ts = master.getDuals_ts()
 
-print('*             *****Column Generation Iteration*****              *')
+print("*{:^88}*".format(""))
+print("*{:^88}*".format("***** Column Generation Iteration *****"))
+print("*{:^88}*".format(""))
+print("*" * 90)
+print("*{:^88}*".format(""))
+
 t0 = time.time()
 while (modelImprovable) and itr < max_itr:
     # Start
@@ -338,16 +348,14 @@ while (modelImprovable) and itr < max_itr:
 
     # Solve RMP
     master.current_iteration = itr + 1
-    print(f"* Current Roster: {master.roster}")
+    print("*{:^88}*".format(f"Current Roster: {master.roster}"))
     master.solveRelaxModel()
-    lambdas = master.printLambdas()
-    print(f"* Lambdas: {lambdas}")
     objValHistRMP.append(master.model.objval)
-    print('* Current RMP ObjVal: ', objValHistRMP)
+    print("*{:^88}*".format(f"Current RMP ObjVal: {objValHistRMP}"))
 
     # Get Duals
     duals_i = master.getDuals_i()
-    print(f"* Duals in Iteration {itr}: {duals_i}")
+    print("*{:^88}*".format(f"Duals in Iteration {itr}: {duals_i}"))
     duals_ts = master.getDuals_ts()
 
     # Solve SPs
@@ -358,20 +366,22 @@ while (modelImprovable) and itr < max_itr:
         subproblem.solveModel(time_Limit)
         opt_val = subproblem.getNewSchedule()
         opt_val_rounded = {key: round(value, 3) for key, value in opt_val.items()}
-        print(f"* Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}")
+        print("*{:^88}*".format(f"Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}"))
+
         status = subproblem.getStatus()
         if status != 2:
-            raise Exception("* Pricing-Problem can not reach optimality!")
+            raise Exception("*{:^88}*".format("Pricing-Problem can not reach optimality!"))
+
         reducedCost = subproblem.model.objval
         objValHistSP.append(reducedCost)
-        print('* Reduced cost', reducedCost)
+        print("*{:^88}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}"))
         if reducedCost < -1e-6:
             Schedules = subproblem.getNewSchedule()
             master.addColumn(index, itr, Schedules)
             master.addLambda(index, itr)
             master.updateModel()
             modelImprovable = True
-            print(f"* Reduced-cost < 0 columns found...")
+            print("*{:^88}*".format(f"Reduced-cost < 0 columns found..."))
     master.updateModel()
     master.model.write(f"LP-Iteration-{itr}.lp")
 
@@ -379,40 +389,50 @@ while (modelImprovable) and itr < max_itr:
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
-    print('* End CG iteration: ', itr)
+    print("*{:^88}*".format(""))
+    print("*{:^88}*".format(f"End CG iteration {itr}"))
+    print("*{:^88}*".format(""))
+    print("*" * 90)
 
     if not modelImprovable:
-        print("* No more improvable columns found.")
+        print("*{:^88}*".format(""))
+        print("*{:^88}*".format("No more improvable columns found."))
+        print("*{:^88}*".format(""))
+        print("*" * 90)
+
 
 # Solve MP
 master.finalSolve(time_Limit)
 final_obj = master.model.objval
 
-# Results
-print("*" * 80)
-print("*{:^78}*".format("*****Results*****"))
-print("*{:^78}*".format(""))
-print("*{:^78}*".format("Total iterations: " + str(itr)))
-print("*{:^78}*".format("Total elapsed time: " + str(round((time.time() - t0), 4)) + " seconds"))
-print("*{:^78}*".format("Final solution: " + str(round(master.model.objval, 3))))
-print("*{:^78}*".format(""))
-print("*{:^78}*".format("The optimal solution found by normal solver is: " + str(round(final_obj, 3))))
-print("*{:^78}*".format("The optimal solution found by the CG solver is: " + str(round(obj_val_problem, 3))))
-if round(final_obj, 1)-round(obj_val_problem, 1) != 0:
-    print("*{:^78}*".format("The Optimality-GAP is ",round(final_obj, 1)/(round(final_obj, 1)-round(obj_val_problem, 1)) + "%"))
-else:
-    print("*{:^78}*".format(f"The Optimality-GAP is {round(final_obj, 1)-round(obj_val_problem, 1)}%: CG provides the optimal solution"))
-print("*{:^78}*".format(""))
-print("*{:^78}*".format(""))
-if round((time.time() - t0), 4) < time_problem:
-    print("*{:^78}*".format("CG is faster by " + str(time_problem - round((time.time() - t0), 4)) + " seconds"))
-elif round((time.time() - t0), 4) > time_problem:
-    print("*{:^78}*".format("Normal solver is faster by " + str(round((time.time() - t0), 4) - time_problem) + " seconds"))
-else:
-    print("*{:^78}*".format("CG and normal solver are equally fast: " + str(time_problem) + " seconds"))
-print("*" * 80)
-
 # Print Plots
 plot_obj_val(objValHistRMP)
 plot_avg_rc(avg_rc_hist)
 plot_together(objValHistRMP, avg_rc_hist)
+
+# Results
+print("*" * 90)
+print("*{:^88}*".format("***** Results *****"))
+print("*{:^88}*".format(""))
+print("*{:^88}*".format("Total iterations: " + str(itr)))
+print("*{:^88}*".format("Total elapsed time: " + str(round((time.time() - t0), 4)) + " seconds"))
+print("*{:^88}*".format("Final solution: " + str(round(master.model.objval, 3))))
+print("*{:^88}*".format(""))
+print("*{:^88}*".format("The optimal solution found by normal solver is: " + str(round(final_obj, 1))))
+print("*{:^88}*".format("The optimal solution found by the CG solver is: " + str(round(obj_val_problem, 1))))
+if round(final_obj, 1)-round(obj_val_problem, 1) != 0:
+    print("*{:^88}*".format("The Optimality-GAP is ",round(final_obj, 1)/(round(final_obj, 1)-round(obj_val_problem, 1)) + "%"))
+else:
+    print("*{:^88}*".format(f"The Optimality-GAP is {round(final_obj, 1)-round(obj_val_problem, 1)}%: CG provides the global optimal solution!"))
+print("*{:^88}*".format(""))
+print("*{:^88}*".format(""))
+if round((time.time() - t0), 4) < time_problem:
+    print("*{:^88}*".format("CG is faster by " + str(time_problem - round((time.time() - t0), 4)) + " seconds"))
+elif round((time.time() - t0), 4) > time_problem:
+    print("*{:^88}*".format("Normal solver is faster by " + str(round((time.time() - t0), 4) - time_problem) + " seconds"))
+else:
+    print("*{:^88}*".format("CG and normal solver are equally fast: " + str(time_problem) + " seconds"))
+print("*" * 90)
+
+# Check for roster similarity
+ListComp()

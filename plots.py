@@ -1,5 +1,6 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 def plot_obj_val(objValHistRMP):
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o')

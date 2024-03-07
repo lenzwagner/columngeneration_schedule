@@ -36,6 +36,7 @@ def gen_alpha(seed):
 # General Parameter
 time_Limit = 3600
 max_itr = 10
+seed = 123
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -149,9 +150,8 @@ class MasterProblem:
         print(f"* Check for quadratic constraintrs {self.qconstrs}")
 
     def finalObj(self):
-        obj = self.model.getObjective()
-        value = obj.getValue()
-        return value
+        obj = self.model.objval
+        return obj
 
     def printLambdas(self):
         return self.model.getAttr("X", self.lmbda)
@@ -164,15 +164,16 @@ class MasterProblem:
         self.model.write("Final.lp")
         self.model.write("Final.sol")
         if self.model.status == GRB.OPTIMAL:
-            print("* Optimal solution found")
-            for i in self.nurses:
-                for r in self.roster:
-                    if self.lmbda[i, r].x == 1:
-                        for s in self.shifts:
-                            for t in self.days:
-                                print(f"* Nurse {i}: Motivation {self.motivation_i[i, t, s, r].x} in Shift {s} on day {t}")
+            print("*" * 80)
+            print("*{:^78}*".format(""))
+            print("*{:^78}*".format("*****Optimal solution found*****"))
+            print("*{:^78}*".format(""))
         else:
-            print("* No optimal solution found.")
+            print("*" * 80)
+            print("*{:^78}*".format(""))
+            print("*{:^78}*".format("*****No ptimal solution found*****"))
+            print("*{:^78}*".format(""))
+
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration, alpha):
@@ -226,10 +227,6 @@ class Subproblem:
     def getNewSchedule(self):
         return self.model.getAttr("X", self.motivation)
 
-    def getOptValues(self):
-        opt_moti = self.model.getAttr("X", self.motivation)
-        return opt_moti
-
     def getStatus(self):
         return self.model.status
 
@@ -237,14 +234,74 @@ class Subproblem:
         self.model.setParam('TimeLimit', timeLimit)
         self.model.Params.OutputFlag = 0
         self.model.optimize()
-        if self.model.status == gu.GRB.OPTIMAL:
-            print("* Optimal solution found")
-            for i in [self.index]:
-                for t in self.days:
-                    for s in self.shifts:
-                        print(f"* Nurse {self.index}: Motivation {self.x[i, t, s].x} in Shift {s} on day {t}")
-        else:
-            print("* No optimal solution found.")
+
+#### Normal Solving
+class Problem:
+    def __init__(self, dfData, DemandDF, alpha):
+        self.I = dfData['I'].dropna().astype(int).unique().tolist()
+        self.T = dfData['T'].dropna().astype(int).unique().tolist()
+        self.K = dfData['K'].dropna().astype(int).unique().tolist()
+        self.demand = DemandDF
+        self.Max = 5
+        self.Min = 2
+        self.M = 1e6
+        self.alpha = alpha
+        self.model = gu.Model("Problem")
+
+    def buildModel(self):
+        self.t0 = time.time()
+        self.generateVariables()
+        self.generateConstraints()
+        self.generateObjective()
+        self.model.update()
+
+    def generateVariables(self):
+        self.slack = self.model.addVars(self.T, self.K, vtype=gu.GRB.CONTINUOUS, lb=0, name='slack')
+        self.motivation = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.CONTINUOUS, lb=0, ub=1, name='motivation')
+        self.x = self.model.addVars(self.I, self.T, self.K, vtype=gu.GRB.BINARY, name='x')
+        self.y = self.model.addVars(self.I, self.T, vtype=gu.GRB.BINARY, name='y')
+        self.mood = self.model.addVars(self.I, self.T, vtype=gu.GRB.CONTINUOUS, lb=0, name='mood')
+
+    def generateConstraints(self):
+        for t in self.T:
+            for s in self.K:
+                self.model.addConstr(
+                    gu.quicksum(self.motivation[i, t, s,] for i in self.I) + self.slack[t, s] >= self.demand[t, s])
+        for i in self.I:
+            for t in self.T:
+                self.model.addLConstr(self.mood[i, t] == 1 - self.alpha[i, t])
+                self.model.addLConstr(quicksum(self.x[i, t, s] for s in self.K) == self.y[i, t])
+                self.model.addLConstr(gu.quicksum(self.x[i, t, s] for s in self.K) <= 1)
+                for s in self.K:
+                    self.model.addLConstr(self.motivation[i, t, s] >= self.mood[i, t] - self.M * (1 - self.x[i, t, s]))
+                    self.model.addLConstr(self.motivation[i, t, s] <= self.mood[i, t] + self.M * (1 - self.x[i, t, s]))
+                    self.model.addLConstr(self.motivation[i, t, s] <= self.x[i, t, s])
+            for t in range(1, len(self.T) - self.Max + 1):
+                self.model.addLConstr(gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max)) <= self.Max)
+            self.model.addLConstr(gu.quicksum(self.y[i, t] for t in self.T) >= self.Min)
+
+    def generateObjective(self):
+        self.model.setObjective(gu.quicksum(self.slack[t, s] for t in self.T for s in self.K), sense=gu.GRB.MINIMIZE)
+
+    def solveModel(self, timeLimit):
+        self.model.setParam('TimeLimit', timeLimit)
+        self.model.Params.OutputFlag = 0
+        self.model.optimize()
+        self.t1 = time.time()
+
+    def getTime(self):
+        self.time_total = self.t1 - self.t0
+        return self.time_total
+
+    def get_final_values(self):
+        return {(i, j, k): round(value, 3) for (i, j, k), value in self.model.getAttr("X", self.motivation).items()}
+
+problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
+problem.buildModel()
+problem.solveModel(time_Limit)
+obj_val_problem = round(problem.model.objval, 3)
+time_problem = round(problem.getTime(), 4)
+vals_prob = problem.get_final_values()
 
 
 #### Column Generation
@@ -297,10 +354,10 @@ while (modelImprovable) and itr < max_itr:
     # Solve SPs
     modelImprovable = False
     for index in I_list:
-        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(123))
+        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed))
         subproblem.buildModel()
         subproblem.solveModel(time_Limit)
-        opt_val = subproblem.getOptValues()
+        opt_val = subproblem.getNewSchedule()
         opt_val_rounded = {key: round(value, 3) for key, value in opt_val.items()}
         print(f"* Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}")
         status = subproblem.getStatus()
@@ -333,21 +390,28 @@ master.finalSolve(time_Limit)
 final_obj = master.model.objval
 
 # Results
-print("*" * 70)
-print("*{:^68}*".format("*****Results*****"))
-print("*{:^68}*".format(""))
-print("*{:^68}*".format("Total iterations: " + str(itr)))
-total = round((time.time() - t0), 2)
-print("*{:^68}*".format("Total elapsed time: " + str(total)))
-print("*{:^68}*".format("Final solution: " + str(round(master.model.objval,3))))
-print("*{:^68}*".format(""))
-print("*{:^68}*".format("The relaxed feasible solution found by solver is: " + str(round(objValHistRMP[-1],3))))
-print("*{:^68}*".format("The integer feasible solution found by solver is: " + str(round(final_obj,3))))
-if round(final_obj,3)-round(objValHistRMP[-1],3) != 0:
-    print("*{:^68}*".format("The GAP is:",round(final_obj,3)/(round(final_obj,3)-round(objValHistRMP[-1],3))))
+print("*" * 80)
+print("*{:^78}*".format("*****Results*****"))
+print("*{:^78}*".format(""))
+print("*{:^78}*".format("Total iterations: " + str(itr)))
+print("*{:^78}*".format("Total elapsed time: " + str(round((time.time() - t0), 4)) + " seconds"))
+print("*{:^78}*".format("Final solution: " + str(round(master.model.objval, 3))))
+print("*{:^78}*".format(""))
+print("*{:^78}*".format("The optimal solution found by normal solver is: " + str(round(final_obj, 3))))
+print("*{:^78}*".format("The optimal solution found by the CG solver is: " + str(round(obj_val_problem, 3))))
+if round(final_obj, 1)-round(obj_val_problem, 1) != 0:
+    print("*{:^78}*".format("The Optimality-GAP is ",round(final_obj, 1)/(round(final_obj, 1)-round(obj_val_problem, 1)) + "%"))
 else:
-    print("*{:^68}*".format("The GAP is undefined (division by zero)"))
-print("*" * 70)
+    print("*{:^78}*".format(f"The Optimality-GAP is {round(final_obj, 1)-round(obj_val_problem, 1)}%: CG provides the optimal solution"))
+print("*{:^78}*".format(""))
+print("*{:^78}*".format(""))
+if round((time.time() - t0), 4) < time_problem:
+    print("*{:^78}*".format("CG is faster by " + str(time_problem - round((time.time() - t0), 4)) + " seconds"))
+elif round((time.time() - t0), 4) > time_problem:
+    print("*{:^78}*".format("Normal solver is faster by " + str(round((time.time() - t0), 4) - time_problem) + " seconds"))
+else:
+    print("*{:^78}*".format("CG and normal solver are equally fast: " + str(time_problem) + " seconds"))
+print("*" * 80)
 
 def plot_obj_val(objValHistRMP):
     sns.set(style='darkgrid')

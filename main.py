@@ -246,7 +246,7 @@ class Problem:
         self.Min = 2
         self.M = 1e6
         self.alpha = alpha
-        self.model = gu.Model("Problem")
+        self.model = gu.Model("Problems")
 
     def buildModel(self):
         self.t0 = time.time()

@@ -171,7 +171,7 @@ class MasterProblem:
     def printLambdas(self):
         return self.model.getAttr("X", self.lmbda)
 
-    def finalSolve(self, timeLimit, EPS):
+    def finalSolve(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
         self.model.update()
@@ -253,7 +253,7 @@ class Subproblem:
     def getStatus(self):
         return self.model.status
 
-    def solveModel(self, timeLimit, EPS):
+    def solveModel(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.Params.OutputFlag = 0
         self.model.optimize()
@@ -271,7 +271,7 @@ class Subproblem:
 # CG Prerequisites
 modelImprovable = True
 t0 = time.time()
-max_itr = 20
+max_itr = 2
 itr = 0
 
 # Lists
@@ -321,8 +321,9 @@ while (modelImprovable) and itr < max_itr:
         subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, alpha)
         subproblem.buildModel()
         subproblem.solveModel(3600)
-        val = subproblem.getOptValues()
-        print(f" Opt. Values {val}")
+        opt_val = subproblem.getOptValues()
+        opt_val_rounded = {key: round(value, 3) for key, value in opt_val.items()}
+        print(f" Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}")
         status = subproblem.getStatus()
         if status != 2:
             raise Exception("Pricing-Problem can not reach optimality!")

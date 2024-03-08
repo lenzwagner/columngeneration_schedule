@@ -4,8 +4,8 @@ import pandas as pd
 import os
 import time
 from plots import plot_obj_val, plot_avg_rc, plot_together
-from utilitiy import ListComp
-import textwrap
+from utilitiy import get_nurse_schedules, list_diff_sum
+from results import printResults
 import random
 
 clear = lambda: os.system('cls')
@@ -34,10 +34,22 @@ def gen_alpha(seed):
     alpha = {(i, t): round(random.random(), 3) for i in I_list for t in T_list}
     return alpha
 
+def get_alpha_lists(I_list, alpha_dict):
+  alpha_lists = {}
+  for i in I_list:
+    alpha_list = []
+    for t in T_list:
+      alpha_list.append(alpha_dict[(i,t)])
+    alpha_lists[f"Nurse_{i}"] = alpha_list
+  print(alpha_lists)
+  return alpha_lists
+
+get_alpha_lists(I_list, gen_alpha(123))
+
 # General Parameter
 time_Limit = 3600
 max_itr = 10
-seed = 123
+seed = 1234
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -103,7 +115,7 @@ class MasterProblem:
         for i in self.nurses:
             for t in self.days:
                 for s in self.shifts:
-                    self.model.addConstr(self.motivation_i[i ,t, s, 1] == 0)
+                    self.model.addConstr(0 == self.motivation_i[i ,t, s, 1])
 
     def solveModel(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
@@ -165,12 +177,10 @@ class MasterProblem:
         self.model.write("Final.sol")
         if self.model.status == GRB.OPTIMAL:
             print("*" * 90)
-            print("*{:^88}*".format(""))
             print("*{:^88}*".format("***** Optimal solution found *****"))
             print("*{:^88}*".format(""))
         else:
             print("*" * 90)
-            print("*{:^88}*".format(""))
             print("*{:^88}*".format("***** No optimal solution found *****"))
             print("*{:^88}*".format(""))
 
@@ -205,8 +215,8 @@ class Subproblem:
     def generateConstraints(self):
         for i in [self.index]:
             for t in self.days:
-                self.model.addLConstr(self.mood[i, t] == 1- self.alpha[i, t])
-                self.model.addLConstr(quicksum(self.x[i, t, s] for s in self.shifts) == self.y[i, t])
+                self.model.addLConstr(1 - self.alpha[i, t] == self.mood[i, t])
+                self.model.addLConstr(self.y[i, t] == quicksum(self.x[i, t, s] for s in self.shifts))
                 self.model.addLConstr(gu.quicksum(self.x[i, t, s] for s in self.shifts) <= 1)
                 for s in self.shifts:
                     self.model.addLConstr(
@@ -226,6 +236,13 @@ class Subproblem:
 
     def getNewSchedule(self):
         return self.model.getAttr("X", self.motivation)
+
+    def getOptX(self):
+        vals_opt = self.model.getAttr("X", self.motivation)
+        vals_list = []
+        for vals in vals_opt.values():
+            vals_list.append(vals)
+        return vals_list
 
     def getStatus(self):
         return self.model.status
@@ -294,7 +311,11 @@ class Problem:
         return self.time_total
 
     def get_final_values(self):
-        return {(i, j, k): round(value, 3) for (i, j, k), value in self.model.getAttr("X", self.motivation).items()}
+        dict = self.model.getAttr("X", self.motivation)
+        liste = list(dict.values())
+        final = [0.0 if x == -0.0 else x for x in liste]
+        return final
+
 
 problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
 problem.buildModel()
@@ -340,6 +361,10 @@ print("*{:^88}*".format(""))
 print("*" * 90)
 print("*{:^88}*".format(""))
 
+Iter_schedules = {}
+for index in I_list:
+    Iter_schedules[f"Nurse_{index}"] = []
+
 t0 = time.time()
 while (modelImprovable) and itr < max_itr:
     # Start
@@ -348,7 +373,6 @@ while (modelImprovable) and itr < max_itr:
 
     # Solve RMP
     master.current_iteration = itr + 1
-    print("*{:^88}*".format(f"Current Roster: {master.roster}"))
     master.solveRelaxModel()
     objValHistRMP.append(master.model.objval)
     print("*{:^88}*".format(f"Current RMP ObjVal: {objValHistRMP}"))
@@ -364,9 +388,10 @@ while (modelImprovable) and itr < max_itr:
         subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed))
         subproblem.buildModel()
         subproblem.solveModel(time_Limit)
-        opt_val = subproblem.getNewSchedule()
-        opt_val_rounded = {key: round(value, 3) for key, value in opt_val.items()}
-        print("*{:^88}*".format(f"Optimal Values Iteration {itr} for SP {index}: {opt_val_rounded}"))
+
+        optx_values = subproblem.getOptX()
+        Iter_schedules[f"Nurse_{index}"].append(optx_values)
+        print("*{:^88}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}"))
 
         status = subproblem.getStatus()
         if status != 2:
@@ -403,7 +428,14 @@ while (modelImprovable) and itr < max_itr:
 
 # Solve MP
 master.finalSolve(time_Limit)
-final_obj = master.model.objval
+total_time_cg = time.time() - t0
+final_obj_cg = master.model.objval
+lambda_values = master.printLambdas()
+for i in master.nurses:
+   for r in master.roster:
+      if lambda_values[(i,r)] == 1:
+          print("*{:^88}*".format(f"For nurse {i}, Iteration {r-1} is used."))
+print("*{:^88}*".format(""))
 
 # Print Plots
 plot_obj_val(objValHistRMP)
@@ -411,28 +443,9 @@ plot_avg_rc(avg_rc_hist)
 plot_together(objValHistRMP, avg_rc_hist)
 
 # Results
-print("*" * 90)
-print("*{:^88}*".format("***** Results *****"))
-print("*{:^88}*".format(""))
-print("*{:^88}*".format("Total iterations: " + str(itr)))
-print("*{:^88}*".format("Total elapsed time: " + str(round((time.time() - t0), 4)) + " seconds"))
-print("*{:^88}*".format("Final solution: " + str(round(master.model.objval, 3))))
-print("*{:^88}*".format(""))
-print("*{:^88}*".format("The optimal solution found by normal solver is: " + str(round(final_obj, 1))))
-print("*{:^88}*".format("The optimal solution found by the CG solver is: " + str(round(obj_val_problem, 1))))
-if round(final_obj, 1)-round(obj_val_problem, 1) != 0:
-    print("*{:^88}*".format("The Optimality-GAP is ",round(final_obj, 1)/(round(final_obj, 1)-round(obj_val_problem, 1)) + "%"))
-else:
-    print("*{:^88}*".format(f"The Optimality-GAP is {round(final_obj, 1)-round(obj_val_problem, 1)}%: CG provides the global optimal solution!"))
-print("*{:^88}*".format(""))
-print("*{:^88}*".format(""))
-if round((time.time() - t0), 4) < time_problem:
-    print("*{:^88}*".format("CG is faster by " + str(time_problem - round((time.time() - t0), 4)) + " seconds"))
-elif round((time.time() - t0), 4) > time_problem:
-    print("*{:^88}*".format("Normal solver is faster by " + str(round((time.time() - t0), 4) - time_problem) + " seconds"))
-else:
-    print("*{:^88}*".format("CG and normal solver are equally fast: " + str(time_problem) + " seconds"))
-print("*" * 90)
+printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg)
 
-# Check for roster similarity
-ListComp()
+
+## Get Schedules
+get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list)
+print(problem.get_final_values())

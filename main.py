@@ -48,7 +48,7 @@ def get_alpha_lists(I_list, alpha_dict):
 # General Parameter
 time_Limit = 3600
 max_itr = 10
-seed = 12345
+seed = 1234
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -123,6 +123,7 @@ class MasterProblem:
         self.model.Params.IntegralityFocus = 1
         self.model.Params.FeasibilityTol = 1e-9
         self.model.Params.BarConvTol = 0.0
+        self.model.Params.MIPGap = 1e-2
         self.model.optimize()
 
     def File2Log(self):
@@ -172,6 +173,10 @@ class MasterProblem:
 
     def finalSolve(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
+        self.model.Params.IntegralityFocus = 1
+        self.model.Params.FeasibilityTol = 1e-9
+        self.model.Params.BarConvTol = 0.0
+        self.model.Params.MIPGap = 1e-2
         self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
         self.model.update()
         self.model.optimize()
@@ -252,6 +257,10 @@ class Subproblem:
     def solveModel(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.Params.OutputFlag = 0
+        self.model.Params.IntegralityFocus = 1
+        self.model.Params.FeasibilityTol = 1e-9
+        self.model.Params.BarConvTol = 0.0
+        self.model.Params.MIPGap = 1e-2
         self.model.optimize()
 
 #### Normal Solving
@@ -305,6 +314,10 @@ class Problem:
     def solveModel(self, timeLimit):
         self.model.setParam('TimeLimit', timeLimit)
         self.model.Params.OutputFlag = 0
+        self.model.Params.IntegralityFocus = 1
+        self.model.Params.FeasibilityTol = 1e-9
+        self.model.Params.BarConvTol = 0.0
+        self.model.Params.MIPGap = 1e-2
         self.model.optimize()
         self.t1 = time.time()
 

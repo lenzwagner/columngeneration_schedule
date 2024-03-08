@@ -41,10 +41,9 @@ def get_alpha_lists(I_list, alpha_dict):
     for t in T_list:
       alpha_list.append(alpha_dict[(i,t)])
     alpha_lists[f"Nurse_{i}"] = alpha_list
-  print(alpha_lists)
+
   return alpha_lists
 
-get_alpha_lists(I_list, gen_alpha(123))
 
 # General Parameter
 time_Limit = 3600

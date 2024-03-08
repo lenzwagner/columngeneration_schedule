@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import time
 from plots import plot_obj_val, plot_avg_rc, plot_together
-from utilitiy import get_nurse_schedules, list_diff_sum
+from utilitiy import get_nurse_schedules, ListComp, is_Opt
 from results import printResults
 import random
 
@@ -49,7 +49,7 @@ get_alpha_lists(I_list, gen_alpha(123))
 # General Parameter
 time_Limit = 3600
 max_itr = 10
-seed = 1234
+seed = 12345
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -121,6 +121,9 @@ class MasterProblem:
         self.model.setParam('TimeLimit', timeLimit)
         self.model.Params.QCPDual = 1
         self.model.Params.OutputFlag = 0
+        self.model.Params.IntegralityFocus = 1
+        self.model.Params.FeasibilityTol = 1e-9
+        self.model.Params.BarConvTol = 0.0
         self.model.optimize()
 
     def File2Log(self):
@@ -238,7 +241,7 @@ class Subproblem:
         return self.model.getAttr("X", self.motivation)
 
     def getOptX(self):
-        vals_opt = self.model.getAttr("X", self.motivation)
+        vals_opt = self.model.getAttr("X", self.x)
         vals_list = []
         for vals in vals_opt.values():
             vals_list.append(vals)
@@ -311,7 +314,7 @@ class Problem:
         return self.time_total
 
     def get_final_values(self):
-        dict = self.model.getAttr("X", self.motivation)
+        dict = self.model.getAttr("X", self.x)
         liste = list(dict.values())
         final = [0.0 if x == -0.0 else x for x in liste]
         return final
@@ -355,8 +358,9 @@ master.model.write(f"Sol-{itr}.sol")
 duals_i = master.getDuals_i()
 duals_ts = master.getDuals_ts()
 
+print("*" * 90)
 print("*{:^88}*".format(""))
-print("*{:^88}*".format("***** Column Generation Iteration *****"))
+print("*{:^88}*".format("***** Starting Column Generation *****"))
 print("*{:^88}*".format(""))
 print("*" * 90)
 print("*{:^88}*".format(""))
@@ -364,8 +368,8 @@ print("*{:^88}*".format(""))
 Iter_schedules = {}
 for index in I_list:
     Iter_schedules[f"Nurse_{index}"] = []
-
 t0 = time.time()
+
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
@@ -445,7 +449,8 @@ plot_together(objValHistRMP, avg_rc_hist)
 # Results
 printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg)
 
+# Roster Check
+ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), problem.get_final_values())
 
-## Get Schedules
-get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list)
-print(problem.get_final_values())
+# Optimality check
+is_Opt(seed, final_obj_cg, obj_val_problem)

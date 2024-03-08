@@ -2,9 +2,15 @@ from itertools import chain
 
 def ListComp(list1, list2):
     if list1 == list2:
-        print("Roster are the same")
+        print("*" * 90)
+        print("*{:^88}*".format(f"***** Roster Check *****"))
+        print("*{:^88}*".format(f"Roster are the same!"))
+        print("*" * 90)
     else:
-        print("Roster are not the same")
+        print("*" * 90)
+        print("*{:^88}*".format(f"***** Roster Check *****"))
+        print("*{:^88}*".format(f"Roster are not the same!"))
+        print("*" * 90)
 
 def get_nurse_schedules(Iter_schedules, lambdas, I_list):
     nurse_schedules = []
@@ -19,7 +25,6 @@ def get_nurse_schedules(Iter_schedules, lambdas, I_list):
         flat_nurse_schedules.extend(nurse_schedule)
 
     flat = list(chain(*flat_nurse_schedules))
-    print(flat)
     return flat
 
 
@@ -34,3 +39,16 @@ def list_diff_sum(list1, list2):
             result.append(1)
 
     return result
+
+def is_Opt(seed, final_obj_cg, obj_val_problem):
+    is_optimal = {}
+    diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
+
+    if diff == 0:
+        is_optimal[(seed)] = 1
+    else:
+        is_optimal[(seed)] = 0
+
+    print(is_optimal)
+
+    return is_optimal

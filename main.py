@@ -50,7 +50,6 @@ get_alpha_lists(I_list, gen_alpha(123))
 time_Limit = 3600
 max_itr = 10
 seed = 12345
-res_width = 98
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -163,7 +162,7 @@ class MasterProblem:
 
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
-        print("*{:^{res_width}}*".format(f"Check for quadratic constraints {self.qconstrs}", res_width = res_width))
+        print("*{:^88}*".format(f"Check for quadratic constraints {self.qconstrs}"))
 
     def finalObj(self):
         obj = self.model.objval
@@ -180,14 +179,13 @@ class MasterProblem:
         self.model.write("Final.lp")
         self.model.write("Final.sol")
         if self.model.status == GRB.OPTIMAL:
-            print("*" * )
+            print("*" * 90)
             print("*{:^88}*".format("***** Optimal solution found *****"))
-            print("*{:^{nr}}*".format("", res_width=res_width))
-
+            print("*{:^88}*".format(""))
         else:
-            print("*" * (res_width + 2))
-            print("*{:^{nr}}*".format("***** No optimal solution found *****", res_width=res_width))
-            print("*{:^{nr}}*".format("", res_width=res_width))
+            print("*" * 90)
+            print("*{:^88}*".format("***** No optimal solution found *****"))
+            print("*{:^88}*".format(""))
 
 
 class Subproblem:
@@ -449,7 +447,7 @@ plot_avg_rc(avg_rc_hist)
 plot_together(objValHistRMP, avg_rc_hist)
 
 # Results
-printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, res_width)
+printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, 88)
 
 # Roster Check
 ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), problem.get_final_values())

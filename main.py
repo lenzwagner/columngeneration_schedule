@@ -49,7 +49,7 @@ def get_alpha_lists(I_list, alpha_dict):
 time_Limit = 3600
 max_itr = 10
 seed = 1234
-length = 120
+output_len = 98
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
@@ -163,7 +163,7 @@ class MasterProblem:
 
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
-        print("*{:^{length}}*".format(f"Check for quadratic constraints {self.qconstrs}", length=length))
+        print("*{:^{output_len}}*".format(f"Check for quadratic constraints {self.qconstrs}", output_len=output_len))
     def finalObj(self):
         obj = self.model.objval
         return obj
@@ -177,19 +177,19 @@ class MasterProblem:
         self.model.Params.FeasibilityTol = 1e-9
         self.model.Params.BarConvTol = 0.0
         self.model.Params.MIPGap = 1e-2
-        self.model.setAttr("vType", self.lmbda, gu.GRB.INTEGER)
+        self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
         self.model.update()
         self.model.optimize()
         self.model.write("Final.lp")
         self.model.write("Final.sol")
         if self.model.status == GRB.OPTIMAL:
-            print("*" * (length + 2))
-            print("*{:^{length}}*".format("***** Optimal solution found *****", length=length))
-            print("*{:^{length}}*".format("", length=length))
+            print("*" * (output_len + 2))
+            print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
         else:
-            print("*" * (length + 2))
-            print("*{:^{length}}*".format("***** No optimal solution found *****", length=length))
-            print("*{:^{length}}*".format("", length=length))
+            print("*" * (output_len + 2))
+            print("*{:^{output_len}}*".format("***** No optimal solution found *****", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
 
 
 class Subproblem:
@@ -354,11 +354,11 @@ avg_rc_hist = []
 # Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
 master.buildModel()
-print("*" * (length + 2))
-print("*{:^{length}}*".format("", length=length))
-print("*{:^{length}}*".format("Restricted Master Problem successfully built!", length=length))
-print("*{:^{length}}*".format("", length=length))
-print("*" * (length + 2))
+print("*" * (output_len + 2))
+print("*{:^{output_len}}*".format("", output_len=output_len))
+print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
+print("*{:^{output_len}}*".format("", output_len=output_len))
+print("*" * (output_len + 2))
 master.setStartSolution()
 master.File2Log()
 master.updateModel()
@@ -370,12 +370,12 @@ master.model.write(f"Sol-{itr}.sol")
 duals_i = master.getDuals_i()
 duals_ts = master.getDuals_ts()
 
-print("*" * (length + 2))
-print("*{:^{length}}*".format("", length=length))
-print("*{:^{length}}*".format("***** Starting Column Generation *****", length=length))
-print("*{:^{length}}*".format("", length=length))
-print("*" * (length + 2))
-print("*{:^{length}}*".format("", length=length))
+print("*" * (output_len + 2))
+print("*{:^{output_len}}*".format("", output_len=output_len))
+print("*{:^{output_len}}*".format("***** Starting Column Generation *****", output_len=output_len))
+print("*{:^{output_len}}*".format("", output_len=output_len))
+print("*" * (output_len + 2))
+print("*{:^{output_len}}*".format("", output_len=output_len))
 
 Iter_schedules = {}
 for index in I_list:
@@ -385,16 +385,16 @@ t0 = time.time()
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
-    print("*{:^{length}}*".format(f"Current CG iteration: {itr}", length=length))
+    print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
     # Solve RMP
     master.current_iteration = itr + 1
     master.solveRelaxModel()
     objValHistRMP.append(master.model.objval)
-    print("*{:^{length}}*".format(f"Current RMP ObjVal: {objValHistRMP}", length=length))
+    print("*{:^{output_len}}*".format(f"Current RMP ObjVal: {objValHistRMP}", output_len=output_len))
 
     # Get Duals
     duals_i = master.getDuals_i()
-    print("*{:^{length}}*".format(f"Duals in Iteration {itr}: {duals_i}", length=length))
+    print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_i}", output_len=output_len))
     duals_ts = master.getDuals_ts()
 
     # Solve SPs
@@ -406,22 +406,22 @@ while (modelImprovable) and itr < max_itr:
 
         optx_values = subproblem.getOptX()
         Iter_schedules[f"Nurse_{index}"].append(optx_values)
-        print("*{:^{length}}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}", length=length))
+        print("*{:^{output_len}}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}", output_len=output_len))
 
         status = subproblem.getStatus()
         if status != 2:
-            raise Exception("*{:^{length}}*".format("Pricing-Problem can not reach optimality!", length=length))
+            raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
 
         reducedCost = subproblem.model.objval
         objValHistSP.append(reducedCost)
-        print("*{:^{length}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", length=length))
+        print("*{:^{output_len}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", output_len=output_len))
         if reducedCost < -1e-6:
             Schedules = subproblem.getNewSchedule()
             master.addColumn(index, itr, Schedules)
             master.addLambda(index, itr)
             master.updateModel()
             modelImprovable = True
-            print("*{:^{length}}*".format(f"Reduced-cost < 0 columns found...", length=length))
+            print("*{:^{output_len}}*".format(f"Reduced-cost < 0 columns found...", output_len=output_len))
     master.updateModel()
     master.model.write(f"LP-Iteration-{itr}.lp")
 
@@ -429,16 +429,16 @@ while (modelImprovable) and itr < max_itr:
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
-    print("*{:^{length}}*".format("", length=length))
-    print("*{:^{length}}*".format(f"End CG iteration {itr}", length=length))
-    print("*{:^{length}}*".format("", length=length))
-    print("*" * (length + 2))
+    print("*{:^{output_len}}*".format("", output_len=output_len))
+    print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
+    print("*{:^{output_len}}*".format("", output_len=output_len))
+    print("*" * (output_len + 2))
 
     if not modelImprovable:
-        print("*{:^{length}}*".format("", length=length))
-        print("*{:^{length}}*".format("No more improvable columns found.", length=length))
-        print("*{:^{length}}*".format("", length=length))
-        print("*" * (length + 2))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*" * (output_len + 2))
 
 
 # Solve MP
@@ -449,8 +449,8 @@ lambda_values = master.printLambdas()
 for i in master.nurses:
    for r in master.roster:
       if lambda_values[(i,r)] == 1:
-          print("*{:^{length}}*".format(f"For nurse {i}, Iteration {r-1} is used.", length=length))
-print("*{:^{length}}*".format("", length=length))
+          print("*{:^{output_len}}*".format(f"For nurse {i}, Iteration {r-1} is used.", output_len=output_len))
+print("*{:^{output_len}}*".format("", output_len=output_len))
 
 # Print Plots
 plot_obj_val(objValHistRMP)
@@ -458,10 +458,10 @@ plot_avg_rc(avg_rc_hist)
 plot_together(objValHistRMP, avg_rc_hist)
 
 # Results
-printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, length)
+printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, output_len)
 
 # Roster Check
-ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), problem.get_final_values())
+ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), problem.get_final_values(), output_len)
 
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem)

@@ -1,16 +1,16 @@
 from itertools import chain
 
-def ListComp(list1, list2):
+def ListComp(list1, list2, num):
     if list1 == list2:
-        print("*" * 90)
-        print("*{:^88}*".format(f"***** Roster Check *****"))
-        print("*{:^88}*".format(f"Roster are the same!"))
-        print("*" * 90)
+        print("*" * (num + 2))
+        print("*{:^{num}}*".format(f"***** Roster Check *****", num = num))
+        print("*{:^{num}}*".format(f"Roster are the same!", num = num))
+        print("*" * (num + 2))
     else:
-        print("*" * 90)
-        print("*{:^88}*".format(f"***** Roster Check *****"))
-        print("*{:^88}*".format(f"Roster are not the same!"))
-        print("*" * 90)
+        print("*" * (num + 2))
+        print("*{:^{num}}*".format(f"***** Roster Check *****", num = num))
+        print("*{:^{num}}*".format(f"Roster are not the same!", num = num))
+        print("*" * (num + 2))
 
 def get_nurse_schedules(Iter_schedules, lambdas, I_list):
     nurse_schedules = []

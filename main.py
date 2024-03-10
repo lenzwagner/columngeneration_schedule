@@ -48,7 +48,7 @@ def get_alpha_lists(I_list, alpha_dict):
 # General Parameter
 time_Limit = 3600
 max_itr = 10
-seed = 1234
+seed = 123
 output_len = 98
 
 class MasterProblem:
@@ -489,4 +489,4 @@ printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, ou
 ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), problem.get_final_values(), output_len)
 
 # Optimality check
-is_Opt(seed, final_obj_cg, obj_val_problem)
+is_Opt(seed, final_obj_cg, obj_val_problem, output_len)

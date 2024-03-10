@@ -40,7 +40,7 @@ def list_diff_sum(list1, list2):
 
     return result
 
-def is_Opt(seed, final_obj_cg, obj_val_problem):
+def is_Opt(seed, final_obj_cg, obj_val_problem, nr):
     is_optimal = {}
     diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
 
@@ -49,6 +49,12 @@ def is_Opt(seed, final_obj_cg, obj_val_problem):
     else:
         is_optimal[(seed)] = 0
 
-    print(is_optimal)
+    print("*" * (nr + 2))
+    print("*{:^{nr}}*".format("Is optimal?", nr=nr))
+    print("*{:^{nr}}*".format("1: Yes ", nr=nr))
+    print("*{:^{nr}}*".format("0: No", nr=nr))
+    print("*{:^{nr}}*".format("", nr=nr))
+    print("*{:^{nr}}*".format(f" {is_optimal}", nr=nr))
+    print("*" * (nr + 2))
 
     return is_optimal

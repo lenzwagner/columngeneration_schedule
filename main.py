@@ -95,10 +95,15 @@ class MasterProblem:
                                 sense=gu.GRB.MINIMIZE)
 
     def solveRelaxModel(self):
-        self.model.Params.QCPDual = 1
-        for v in self.model.getVars():
-            v.setAttr('vtype', 'C')
-        self.model.optimize()
+        try:
+            self.model.Params.QCPDual = 1
+            for v in self.model.getVars():
+                v.setAttr('vtype', 'C')
+            self.model.optimize()
+        except gu.GurobiError as e:
+            print('Error code ' + str(e.errno) + ': ' + str(e))
+
+
 
     def getDuals_i(self):
         Pi_cons_lmbda = self.model.getAttr("Pi", self.cons_lmbda)
@@ -118,14 +123,19 @@ class MasterProblem:
                     self.model.addConstr(0 == self.motivation_i[i ,t, s, 1])
 
     def solveModel(self, timeLimit):
-        self.model.setParam('TimeLimit', timeLimit)
-        self.model.Params.QCPDual = 1
-        self.model.Params.OutputFlag = 0
-        self.model.Params.IntegralityFocus = 1
-        self.model.Params.FeasibilityTol = 1e-9
-        self.model.Params.BarConvTol = 0.0
-        self.model.Params.MIPGap = 1e-2
-        self.model.optimize()
+        try:
+            self.model.setParam('TimeLimit', timeLimit)
+            self.model.Params.QCPDual = 1
+            self.model.Params.OutputFlag = 0
+            self.model.Params.IntegralityFocus = 1
+            self.model.Params.FeasibilityTol = 1e-9
+            self.model.Params.BarConvTol = 0.0
+            self.model.Params.MIPGap = 1e-2
+            self.model.optimize()
+        except gu.GurobiError as e:
+            print('Error code ' + str(e.errno) + ': ' + str(e))
+
+
 
     def File2Log(self):
         self.model.Params.LogToConsole = 1
@@ -172,24 +182,30 @@ class MasterProblem:
         return self.model.getAttr("X", self.lmbda)
 
     def finalSolve(self, timeLimit):
-        self.model.setParam('TimeLimit', timeLimit)
-        self.model.Params.IntegralityFocus = 1
-        self.model.Params.FeasibilityTol = 1e-9
-        self.model.Params.BarConvTol = 0.0
-        self.model.Params.MIPGap = 1e-2
-        self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
-        self.model.update()
-        self.model.optimize()
-        self.model.write("Final.lp")
-        self.model.write("Final.sol")
-        if self.model.status == GRB.OPTIMAL:
-            print("*" * (output_len + 2))
-            print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-        else:
-            print("*" * (output_len + 2))
-            print("*{:^{output_len}}*".format("***** No optimal solution found *****", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
+        try:
+            self.model.setParam('TimeLimit', timeLimit)
+            self.model.Params.IntegralityFocus = 1
+            self.model.Params.FeasibilityTol = 1e-9
+            self.model.Params.BarConvTol = 0.0
+            self.model.Params.MIPGap = 1e-2
+            self.model.Params.OutputFlag = 1
+            self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
+            self.model.update()
+            self.model.optimize()
+            self.model.write("Final.lp")
+            self.model.write("Final.sol")
+            if self.model.status == GRB.OPTIMAL:
+                print("*" * (output_len + 2))
+                print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=output_len))
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+            else:
+                print("*" * (output_len + 2))
+                print("*{:^{output_len}}*".format("***** No optimal solution found *****", output_len=output_len))
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+        except gu.GurobiError as e:
+            print('Error code ' + str(e.errno) + ': ' + str(e))
+
+
 
 
 class Subproblem:
@@ -255,13 +271,17 @@ class Subproblem:
         return self.model.status
 
     def solveModel(self, timeLimit):
-        self.model.setParam('TimeLimit', timeLimit)
-        self.model.Params.OutputFlag = 0
-        self.model.Params.IntegralityFocus = 1
-        self.model.Params.FeasibilityTol = 1e-9
-        self.model.Params.BarConvTol = 0.0
-        self.model.Params.MIPGap = 1e-2
-        self.model.optimize()
+        try:
+            self.model.setParam('TimeLimit', timeLimit)
+            self.model.Params.OutputFlag = 0
+            self.model.Params.IntegralityFocus = 1
+            self.model.Params.FeasibilityTol = 1e-9
+            self.model.Params.BarConvTol = 0.0
+            self.model.Params.MIPGap = 1e-2
+            self.model.optimize()
+        except gu.GurobiError as e:
+            print('Error code ' + str(e.errno) + ': ' + str(e))
+
 
 #### Normal Solving
 class Problem:
@@ -312,14 +332,19 @@ class Problem:
         self.model.setObjective(gu.quicksum(self.slack[t, s] for t in self.T for s in self.K), sense=gu.GRB.MINIMIZE)
 
     def solveModel(self, timeLimit):
-        self.model.setParam('TimeLimit', timeLimit)
-        self.model.Params.OutputFlag = 0
-        self.model.Params.IntegralityFocus = 1
-        self.model.Params.FeasibilityTol = 1e-9
-        self.model.Params.BarConvTol = 0.0
-        self.model.Params.MIPGap = 1e-2
-        self.model.optimize()
-        self.t1 = time.time()
+        try:
+            self.model.setParam('TimeLimit', timeLimit)
+            self.model.Params.OutputFlag = 0
+            self.model.Params.IntegralityFocus = 1
+            self.model.Params.FeasibilityTol = 1e-9
+            self.model.Params.BarConvTol = 0.0
+            self.model.Params.MIPGap = 1e-2
+            self.model.optimize()
+            self.t1 = time.time()
+        except gu.GurobiError as e:
+            print('Error code ' + str(e.errno) + ': ' + str(e))
+
+
 
     def getTime(self):
         self.time_total = self.t1 - self.t0

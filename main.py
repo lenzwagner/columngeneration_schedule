@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import time
 from plots import plot_obj_val, plot_avg_rc, plot_together
-from utilitiy import get_nurse_schedules, ListComp, is_Opt
+from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars
 from results import printResults
 import random
 
@@ -52,7 +52,7 @@ seed = 12345
 output_len = 98
 
 class MasterProblem:
-    def __init__(self, dfData, DemandDF, max_iteration, current_iteration):
+    def __init__(self, dfData, DemandDF, max_iteration, current_iteration, last):
         self.iteration = current_iteration
         self.max_iteration = max_iteration
         self.nurses = dfData['I'].dropna().astype(int).unique().tolist()
@@ -65,6 +65,8 @@ class MasterProblem:
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
         self.newvar = {}
+        self.last_itr = last
+        self.max_itr = max_iteration
         self.cons_lmbda = {}
 
     def buildModel(self):
@@ -135,8 +137,6 @@ class MasterProblem:
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
 
-
-
     def File2Log(self):
         self.model.Params.LogToConsole = 1
         self.model.Params.LogFile = "./log_file_cg.log"
@@ -180,6 +180,7 @@ class MasterProblem:
 
     def printLambdas(self):
         return self.model.getAttr("X", self.lmbda)
+
 
     def finalSolve(self, timeLimit):
         try:
@@ -339,12 +340,11 @@ class Problem:
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-2
             self.model.optimize()
+            self.model.Params.LogToConsole = 0
             self.model.Params.LogFile = "./log_file_compact.log"
             self.t1 = time.time()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
-
-
 
     def getTime(self):
         self.time_total = self.t1 - self.t0
@@ -372,6 +372,7 @@ vals_prob = problem.get_final_values()
 modelImprovable = True
 t0 = time.time()
 itr = 0
+last_itr = 0
 
 # Lists
 objValHistSP = []
@@ -379,7 +380,7 @@ objValHistRMP = []
 avg_rc_hist = []
 
 # Build & Solve MP
-master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
+master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, last_itr)
 master.buildModel()
 print("*" * (output_len + 2))
 print("*{:^{output_len}}*".format("", output_len=output_len))
@@ -441,6 +442,7 @@ while (modelImprovable) and itr < max_itr:
 
         reducedCost = subproblem.model.objval
         objValHistSP.append(reducedCost)
+        last_itr = itr + 1
         print("*{:^{output_len}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", output_len=output_len))
         if reducedCost < -1e-6:
             Schedules = subproblem.getNewSchedule()
@@ -468,7 +470,8 @@ while (modelImprovable) and itr < max_itr:
         print("*" * (output_len + 2))
 
 
-# Solve MP
+# Remove Variables
+remove_vars(master, I_list, T_list, K_list, last_itr, max_itr)
 master.finalSolve(time_Limit)
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
@@ -492,11 +495,3 @@ ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), pro
 
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
-
-
-print(problem.get_final_values_dict())
-
-vars = master.model.getVars()
-cons = master.model.getCons()
-print(vars)
-print(cons)

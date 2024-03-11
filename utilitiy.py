@@ -58,3 +58,14 @@ def is_Opt(seed, final_obj_cg, obj_val_problem, nr):
     print("*" * (nr + 2))
 
     return is_optimal
+
+
+def remove_vars(master, I_list, T_list, K_list, last_itr, max_itr):
+    for i in I_list:
+        for t in T_list:
+            for s in K_list:
+                for r in range(last_itr + 1, max_itr + 2):
+                    var_name = f"motivation_i[{i},{t},{s},{r}]"
+                    var = master.model.getVarByName(var_name)
+                    master.model.remove(var)
+                    master.model.update()

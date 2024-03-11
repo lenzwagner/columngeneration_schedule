@@ -495,3 +495,8 @@ is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 
 
 print(problem.get_final_values_dict())
+
+vars = master.model.getVars()
+cons = master.model.getCons()
+print(vars)
+print(cons)

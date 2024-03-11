@@ -3,7 +3,7 @@ import gurobipy as gu
 import pandas as pd
 import os
 import time
-from plots import plot_obj_val, plot_avg_rc, plot_together
+from plots import plot_obj_val, plot_avg_rc, plot_together, optimality_plot
 from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars
 from results import printResults
 import random
@@ -495,3 +495,7 @@ ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), pro
 
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
+
+# Optimality-Plot
+file='./log_file_compact.log'
+optimality_plot(file)

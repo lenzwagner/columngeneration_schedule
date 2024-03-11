@@ -1,32 +1,19 @@
 import pandas as pd
-import random
 import plotly.express as px
 
 # DF
-data = {'Physician': [], 'Day': [], 'Shift': []}
-nr_phys = 10
-nr_days = 7
-nr_shifts = 6
+dic = {(1, 1, 1): 1.0, (1, 1, 2): 0.0, (1, 1, 3): 0.0, (1, 2, 1): 0.0, (1, 2, 2): 1.0, (1, 2, 3): 0.0, (1, 3, 1): 0.0, (1, 3, 2): 0.0, (1, 3, 3): 0.0, (1, 4, 1): 0.0, (1, 4, 2): 1.0, (1, 4, 3): 0.0, (1, 5, 1): 1.0, (1, 5, 2): 0.0, (1, 5, 3): 0.0, (1, 6, 1): 0.0, (1, 6, 2): 1.0, (1, 6, 3): 0.0, (1, 7, 1): 0.0, (1, 7, 2): 1.0, (1, 7, 3): 0.0, (2, 1, 1): 1.0, (2, 1, 2): 0.0, (2, 1, 3): 0.0, (2, 2, 1): 1.0, (2, 2, 2): 0.0, (2, 2, 3): 0.0, (2, 3, 1): 1.0, (2, 3, 2): 0.0, (2, 3, 3): 0.0, (2, 4, 1): 0.0, (2, 4, 2): 0.0, (2, 4, 3): 0.0, (2, 5, 1): 1.0, (2, 5, 2): 0.0, (2, 5, 3): 0.0, (2, 6, 1): 0.0, (2, 6, 2): 0.0, (2, 6, 3): 1.0, (2, 7, 1): 0.0, (2, 7, 2): 1.0, (2, 7, 3): 0.0, (3, 1, 1): 1.0, (3, 1, 2): 0.0, (3, 1, 3): 0.0, (3, 2, 1): 0.0, (3, 2, 2): 1.0, (3, 2, 3): 0.0, (3, 3, 1): 0.0, (3, 3, 2): 0.0, (3, 3, 3): 0.0, (3, 4, 1): 1.0, (3, 4, 2): 0.0, (3, 4, 3): 0.0, (3, 5, 1): 1.0, (3, 5, 2): 0.0, (3, 5, 3): 0.0, (3, 6, 1): 1.0, (3, 6, 2): 0.0, (3, 6, 3): 0.0, (3, 7, 1): 0.0, (3, 7, 2): 1.0, (3, 7, 3): 0.0}
 
-for i in range(1, nr_phys + 1):
-    for j in range(1, nr_days + 1):
-        data['Physician'].append(i)
-        data['Day'].append(j)
-        data['Shift'].append(None)
+out = (pd.Series(dic, name='worked')
+         .rename_axis(['Physician', 'Day', 'Shift'])
+         .reset_index()
+         .assign(shift=lambda x: x['Shift'].where(x['worked'].eq(1), 0))
+         .pivot_table(index='Physician', columns='Day',
+                      values='Shift', aggfunc='sum')
+       )
 
-max_days= 5
-shifts_day = nr_phys // max_days
-
-for i in range(nr_days):
-    physicians = list(range(nr_phys))
-    random.shuffle(physicians)
-    for j in range(shifts_day):
-        for k in range(max_days):
-            physician = physicians[j * max_days + k]
-            data['Shift'][i * nr_phys + physician] = j
-
-df = pd.DataFrame(data)
-
+df = pd.DataFrame(out)
+print(df)
 
 def schedulePlot(df, undercoverage):
     fig = px.scatter(df, x='Day', y='Physician', color='Shift', symbol='Shift',
@@ -35,7 +22,10 @@ def schedulePlot(df, undercoverage):
                      title=f'Undercoverage: {undercoverage}')
 
     fig.update_traces(marker=dict(size=30), selector=dict(type='scatter'))
-
+    colorbar = dict(thickness=25,
+                    tickvals=[0, 1, 2, 3],
+                    ticktext=['Day', 'Evening', 'Night', 'Off'])
+    fig.update(layout_coloraxis_showscale=True, layout_coloraxis_colorbar=colorbar)
     fig.show()
 
     return fig

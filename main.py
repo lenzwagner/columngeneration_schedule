@@ -48,7 +48,7 @@ def get_alpha_lists(I_list, alpha_dict):
 # General Parameter
 time_Limit = 3600
 max_itr = 10
-seed = 123
+seed = 12345
 output_len = 98
 
 class MasterProblem:
@@ -139,7 +139,7 @@ class MasterProblem:
 
     def File2Log(self):
         self.model.Params.LogToConsole = 1
-        self.model.Params.LogFile = "./log.txt"
+        self.model.Params.LogFile = "./log_file_cg.log"
 
     def addColumn(self, index, itr, schedule):
         self.nurseIndex = index
@@ -334,12 +334,12 @@ class Problem:
     def solveModel(self, timeLimit):
         try:
             self.model.setParam('TimeLimit', timeLimit)
-            self.model.Params.OutputFlag = 0
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-2
             self.model.optimize()
+            self.model.Params.LogFile = "./log_file_compact.log"
             self.t1 = time.time()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
@@ -356,6 +356,8 @@ class Problem:
         final = [0.0 if x == -0.0 else x for x in liste]
         return final
 
+    def get_final_values_dict(self):
+        return self.model.getAttr("X", self.x)
 
 problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
 problem.buildModel()
@@ -490,3 +492,6 @@ ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), pro
 
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
+
+
+print(problem.get_final_values_dict())

@@ -1,5 +1,3 @@
-# Results
-
 def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, nr):
     print("*" * (nr + 2))
     print("*{:^{nr}}*".format("***** Results *****", nr=nr))

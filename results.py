@@ -8,7 +8,7 @@ def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, n
     print("*{:^{nr}}*".format("", nr=nr))
     print("*{:^{nr}}*".format("The optimal solution found by compact solver is: " + str(round(obj_val_problem, 3)), nr=nr))
     print("*{:^{nr}}*".format("The optimal solution found by the CG solver is: " + str(round(final_obj_cg, 3)), nr=nr))
-    gap = round(((round(final_obj_cg, 1)-round(obj_val_problem, 1))/round(final_obj_cg, 1))*100, 3)
+    gap = round(((round(final_obj_cg, 3)-round(obj_val_problem, 3))/round(final_obj_cg, 1))*100, 3)
     gap_str = f"{gap}%"
     if round(final_obj_cg, 3)-round(obj_val_problem, 3) == 0:
         print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))

@@ -2,6 +2,8 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from matplotlib.ticker import PercentFormatter, MaxNLocator
+import itertools
 import os
 import matplotlib.pyplot as plt
 
@@ -113,3 +115,60 @@ def visualize_schedule(dic, days, undercoverage):
 
     fig.show()
     return fig
+
+def combine_legends(*axes):
+    handles = list(itertools.chain(*[ax.get_legend_handles_labels()[0] for ax in axes]))
+    labels = list(
+        itertools.chain(*[ax3.get_legend_handles_labels()[1] for ax3 in axes])
+    )
+    return handles, labels
+
+
+def set_obj_axes_labels(ax):
+    ax.set_ylabel("Objective value")
+    ax.set_xlabel("Iterations")
+
+
+def plot_obj(df, ax):
+    ax.step(
+        list(range(len(df))),
+        df,
+        where="post",
+        color="b",
+        label="Obj",
+    )
+    set_obj_axes_labels(ax)
+
+def plot_gap(df1, ax):
+    ax.step(
+        list(range(len(df1))),
+        df1,
+        where="post",
+        color="green",
+        label="Gap",
+    )
+    ax.set_ylabel("Optimality Gap in %")
+    ax.set_ylim(0, 1)
+    formatter = PercentFormatter(1)
+    ax.yaxis.set_major_formatter(formatter)
+
+
+def optimalityplot(df, df2, last_itr):
+    with plt.style.context("seaborn-v0_8"):
+        _, ax = plt.subplots(figsize=(8, 5))
+
+        plot_obj(df, ax)
+
+        ax2 = ax.twinx()
+        plot_gap(df2, ax2)
+
+        ax.set_xlim(0, last_itr-2)
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        print(combine_legends(ax, ax2))
+        ax.legend(*combine_legends(ax, ax2))
+
+        plt.show()

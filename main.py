@@ -4,7 +4,7 @@ import gurobipy as gu
 import pandas as pd
 import os
 import time
-from plots import plot_obj_val, plot_avg_rc, plot_together, visualize_schedule
+from plots import plot_obj_val, plot_avg_rc, plot_together, optimalityplot, visualize_schedule
 from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars
 from results import printResults
 import random
@@ -423,7 +423,7 @@ while (modelImprovable) and itr < max_itr:
     print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_i}", output_len=output_len))
     duals_ts = master.getDuals_ts()
 
-    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
+    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
     gap_rc_hist.append(gap_rc)
 
     # Solve SPs
@@ -500,3 +500,6 @@ is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 # SchedulePlot
 #fig1 = visualize_schedule(problem.get_final_values_dict(), len(T_list), round(final_obj_cg, 3))
 #fig1.write_image(f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/fig1.pdf')
+
+print(gap_rc_hist)
+optimalityplot(objValHistRMP, gap_rc_hist, last_itr)

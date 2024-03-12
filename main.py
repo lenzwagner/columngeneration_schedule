@@ -1,4 +1,5 @@
 from gurobipy import *
+from kaleido import *
 import gurobipy as gu
 import pandas as pd
 import os
@@ -50,6 +51,7 @@ time_Limit = 3600
 max_itr = 10
 seed = 12345
 output_len = 98
+mue = 1e-4
 
 class MasterProblem:
     def __init__(self, dfData, DemandDF, max_iteration, current_iteration, last):
@@ -191,8 +193,8 @@ class MasterProblem:
             self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
             self.model.update()
             self.model.optimize()
-            self.model.write("Final.lp")
-            self.model.write("Final.sol")
+            #self.model.write("Final.lp")
+            #self.model.write("Final.sol")
             if self.model.status == GRB.OPTIMAL:
                 print("*" * (output_len + 2))
                 print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=output_len))
@@ -373,6 +375,7 @@ last_itr = 0
 objValHistSP = []
 objValHistRMP = []
 avg_rc_hist = []
+gap_rc_hist = []
 
 # Build & Solve MP
 master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, last_itr)
@@ -386,8 +389,8 @@ master.setStartSolution()
 master.File2Log()
 master.updateModel()
 master.solveRelaxModel()
-master.model.write("Initial.lp")
-master.model.write(f"Sol-{itr}.sol")
+#master.model.write("Initial.lp")
+#master.model.write(f"Sol-{itr}.sol")
 
 # Get Duals from MP
 duals_i = master.getDuals_i()
@@ -420,6 +423,9 @@ while (modelImprovable) and itr < max_itr:
     print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_i}", output_len=output_len))
     duals_ts = master.getDuals_ts()
 
+    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
+    gap_rc_hist.append(gap_rc)
+
     # Solve SPs
     modelImprovable = False
     for index in I_list:
@@ -447,12 +453,12 @@ while (modelImprovable) and itr < max_itr:
             modelImprovable = True
             print("*{:^{output_len}}*".format(f"Reduced-cost < 0 columns found...", output_len=output_len))
     master.updateModel()
-    master.model.write(f"LP-Iteration-{itr}.lp")
-
+    #master.model.write(f"LP-Iteration-{itr}.lp")
 
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
+
     print("*{:^{output_len}}*".format("", output_len=output_len))
     print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
     print("*{:^{output_len}}*".format("", output_len=output_len))
@@ -491,9 +497,6 @@ ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), pro
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 
-df = problem.get_final_values_dict()
-print(df)
-
 # SchedulePlot
-fig = visualize_schedule(df, len(T_list), round(final_obj_cg, 3))
-
+#fig1 = visualize_schedule(problem.get_final_values_dict(), len(T_list), round(final_obj_cg, 3))
+#fig1.write_image(f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/fig1.pdf')

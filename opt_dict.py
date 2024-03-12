@@ -3,10 +3,8 @@ import gurobipy as gu
 import pandas as pd
 import os
 import time
-from plots import plot_obj_val, plot_avg_rc, plot_together
-from utilitiy import get_nurse_schedules, ListComp, is_Opt
-from results import printResults
 import random
+import matplotlib.pyplot as plt
 
 clear = lambda: os.system('cls')
 clear()
@@ -96,6 +94,7 @@ class MasterProblem:
 
     def solveRelaxModel(self):
         try:
+            self.model.Params.OutputFlag = 0
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')
@@ -173,7 +172,6 @@ class MasterProblem:
 
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
-        print("*{:^{output_len}}*".format(f"Check for quadratic constraints {self.qconstrs}", output_len=output_len))
     def finalObj(self):
         obj = self.model.objval
         return obj
@@ -187,21 +185,12 @@ class MasterProblem:
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
+            self.model.Params.OutputFlag = 0
             self.model.Params.MIPGap = 1e-2
             self.model.Params.OutputFlag = 1
             self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
             self.model.update()
             self.model.optimize()
-            self.model.write("Final.lp")
-            self.model.write("Final.sol")
-            if self.model.status == GRB.OPTIMAL:
-                print("*" * (output_len + 2))
-                print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=output_len))
-                print("*{:^{output_len}}*".format("", output_len=output_len))
-            else:
-                print("*" * (output_len + 2))
-                print("*{:^{output_len}}*".format("***** No optimal solution found *****", output_len=output_len))
-                print("*{:^{output_len}}*".format("", output_len=output_len))
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
 
@@ -335,12 +324,12 @@ class Problem:
         try:
             self.model.setParam('TimeLimit', timeLimit)
             self.model.Params.IntegralityFocus = 1
+            self.model.Params.OutputFlag = 0
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-2
             self.model.optimize()
             self.model.Params.LogToConsole = 0
-            self.model.Params.LogFile = "./log_file_compact.log"
             self.t1 = time.time()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
@@ -361,8 +350,9 @@ class Problem:
         return self.model.getAttr("X", self.x)
 
 optimal_results = {}
+gap_results = {}
 
-for seed in range(1, 21):
+for seed in range(1, 10001):
 
     problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
     problem.buildModel()
@@ -386,28 +376,14 @@ for seed in range(1, 21):
     # Build & Solve MP
     master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
     master.buildModel()
-    print("*" * (output_len + 2))
-    print("*{:^{output_len}}*".format("", output_len=output_len))
-    print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
-    print("*{:^{output_len}}*".format("", output_len=output_len))
-    print("*" * (output_len + 2))
     master.setStartSolution()
     master.File2Log()
     master.updateModel()
     master.solveRelaxModel()
-    master.model.write("Initial.lp")
-    master.model.write(f"Sol-{itr}.sol")
 
     # Get Duals from MP
     duals_i = master.getDuals_i()
     duals_ts = master.getDuals_ts()
-
-    print("*" * (output_len + 2))
-    print("*{:^{output_len}}*".format("", output_len=output_len))
-    print("*{:^{output_len}}*".format("***** Starting Column Generation *****", output_len=output_len))
-    print("*{:^{output_len}}*".format("", output_len=output_len))
-    print("*" * (output_len + 2))
-    print("*{:^{output_len}}*".format("", output_len=output_len))
 
     Iter_schedules = {}
     for index in I_list:
@@ -417,16 +393,13 @@ for seed in range(1, 21):
     while (modelImprovable) and itr < max_itr:
         # Start
         itr += 1
-        print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
         # Solve RMP
         master.current_iteration = itr + 1
         master.solveRelaxModel()
         objValHistRMP.append(master.model.objval)
-        print("*{:^{output_len}}*".format(f"Current RMP ObjVal: {objValHistRMP}", output_len=output_len))
 
         # Get Duals
         duals_i = master.getDuals_i()
-        print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_i}", output_len=output_len))
         duals_ts = master.getDuals_ts()
 
         # Solve SPs
@@ -438,54 +411,30 @@ for seed in range(1, 21):
 
             optx_values = subproblem.getOptX()
             Iter_schedules[f"Nurse_{index}"].append(optx_values)
-            print("*{:^{output_len}}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}", output_len=output_len))
 
             status = subproblem.getStatus()
-            if status != 2:
-                raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
-
             reducedCost = subproblem.model.objval
             objValHistSP.append(reducedCost)
-            print("*{:^{output_len}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", output_len=output_len))
             if reducedCost < -1e-6:
                 Schedules = subproblem.getNewSchedule()
                 master.addColumn(index, itr, Schedules)
                 master.addLambda(index, itr)
                 master.updateModel()
                 modelImprovable = True
-                print("*{:^{output_len}}*".format(f"Reduced-cost < 0 columns found...", output_len=output_len))
         master.updateModel()
-        master.model.write(f"LP-Iteration-{itr}.lp")
 
 
         avg_rc = sum(objValHistSP) / len(objValHistSP)
         avg_rc_hist.append(avg_rc)
         objValHistSP.clear()
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*" * (output_len + 2))
-
-        if not modelImprovable:
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*" * (output_len + 2))
 
 
     # Solve MP
     master.finalSolve(time_Limit)
     total_time_cg = time.time() - t0
     final_obj_cg = master.model.objval
-    lambda_values = master.printLambdas()
-    for i in master.nurses:
-       for r in master.roster:
-          if lambda_values[(i,r)] == 1:
-              print("*{:^{output_len}}*".format(f"For nurse {i}, Iteration {r-1} is used.", output_len=output_len))
-    print("*{:^{output_len}}*".format("", output_len=output_len))
 
-    # Results
-    printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, output_len)
+    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
 
 
     def is_Opt(final_obj_cg, obj_val_problem):
@@ -499,5 +448,38 @@ for seed in range(1, 21):
 
     # Optimality check
     optimal_results[seed] = is_Opt(final_obj_cg, obj_val_problem)
+    gap_results[seed] = gap_rc
 
+
+print("*" * (output_len + 2))
+print("*{:^{output_len}}*".format("", output_len=output_len))
+print("*{:^{output_len}}*".format("Final", output_len=output_len))
+print("*{:^{output_len}}*".format("", output_len=output_len))
 print(optimal_results)
+print("*{:^{output_len}}*".format("", output_len=output_len))
+print("*" * (output_len + 2))
+
+
+def pie_chart(optimal):
+    zeros = sum(value == 0 for value in optimal.values())
+    ones = sum(value == 1 for value in optimal.values())
+
+    data = pd.DataFrame({'Category': ['Yes', 'No'], 'Count': [ones, zeros]})
+
+    plt.figure(figsize=(6, 6))
+    plt.pie(data['Count'], labels=data['Category'], colors=['#008fd5', '#fc4e07'], startangle=90, autopct='%1.1f%%')
+
+    plt.ylabel('')
+    plt.xlabel('')
+    plt.legend(labels=['Yes', 'No'], loc='lower right', bbox_to_anchor=(1.0, 0.3), title = "Optimal Solution?")
+
+    plt.show()
+
+pie_chart(optimal_results)
+
+
+filtered_values = [value for value in gap_results.values() if value > 1e-3]
+sum_filtered = sum(filtered_values)
+perc_gap = sum_filtered/len(filtered_values)
+print(perc_gap)
+

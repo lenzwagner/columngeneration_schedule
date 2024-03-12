@@ -3,7 +3,7 @@ import gurobipy as gu
 import pandas as pd
 import os
 import time
-from plots import plot_obj_val, plot_avg_rc, plot_together, optimality_plot
+from plots import plot_obj_val, plot_avg_rc, plot_together, visualize_schedule
 from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars
 from results import printResults
 import random
@@ -105,8 +105,6 @@ class MasterProblem:
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
 
-
-
     def getDuals_i(self):
         Pi_cons_lmbda = self.model.getAttr("Pi", self.cons_lmbda)
         return Pi_cons_lmbda
@@ -174,13 +172,13 @@ class MasterProblem:
     def checkForQuadraticCons(self):
         self.qconstrs = self.model.getQConstrs()
         print("*{:^{output_len}}*".format(f"Check for quadratic constraints {self.qconstrs}", output_len=output_len))
+
     def finalObj(self):
         obj = self.model.objval
         return obj
 
     def printLambdas(self):
         return self.model.getAttr("X", self.lmbda)
-
 
     def finalSolve(self, timeLimit):
         try:
@@ -205,9 +203,6 @@ class MasterProblem:
                 print("*{:^{output_len}}*".format("", output_len=output_len))
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
-
-
-
 
 class Subproblem:
     def __init__(self, duals_i, duals_ts, dfData, i, M, iteration, alpha):
@@ -496,6 +491,9 @@ ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), pro
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 
-# Optimality-Plot
-file='./log_file_compact.log'
-optimality_plot(file)
+df = problem.get_final_values_dict()
+print(df)
+
+# SchedulePlot
+fig = visualize_schedule(df, len(T_list), round(final_obj_cg, 3))
+

@@ -10,18 +10,17 @@ from master import MasterProblem
 from sub import Subproblem
 import random
 
-clear = lambda: os.system('cls')
-clear()
-
 # General Prerequisites
 for file in os.listdir():
     if file.endswith('.lp') or file.endswith('.sol') or file.endswith('.txt'):
         os.remove(file)
 
-# Create Dataframes
+# Set of indices
 I_list = [1, 2, 3]
 T_list = [1, 2, 3, 4, 5, 6, 7]
 K_list = [1, 2, 3]
+
+# Create Dataframes
 I_list1 = pd.DataFrame(I_list, columns=['I'])
 T_list1 = pd.DataFrame(T_list, columns=['T'])
 K_list1 = pd.DataFrame(K_list, columns=['K'])
@@ -30,22 +29,11 @@ Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}
 
-# Generate Alpha
+# Generate Alpha's
 def gen_alpha(seed):
     random.seed(seed)
     alpha = {(i, t): round(random.random(), 3) for i in I_list for t in T_list}
     return alpha
-
-def get_alpha_lists(I_list, alpha_dict):
-  alpha_lists = {}
-  for i in I_list:
-    alpha_list = []
-    for t in T_list:
-      alpha_list.append(alpha_dict[(i,t)])
-    alpha_lists[f"Nurse_{i}"] = alpha_list
-
-  return alpha_lists
-
 
 # General Parameter
 time_Limit = 3600
@@ -56,9 +44,12 @@ mue = 1e-4
 
 
 ### Compact Solver ###
+# Build and solve model
 problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
 problem.buildModel()
 problem.solveModel(time_Limit)
+
+# Store metrics
 obj_val_problem = round(problem.model.objval, 3)
 time_problem = round(problem.getTime(), 4)
 vals_prob = problem.get_final_values()
@@ -71,7 +62,7 @@ t0 = time.time()
 itr = 0
 last_itr = 0
 
-# Lists
+# Create empty lists
 objValHistSP = []
 timeHist = []
 objValHistRMP = []
@@ -79,7 +70,7 @@ avg_rc_hist = []
 avg_sp_time = []
 gap_rc_hist = []
 
-# Build & Solve MP
+# Build MP
 master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, last_itr, output_len)
 master.buildModel()
 print("*" * (output_len + 2))
@@ -87,16 +78,17 @@ print("*{:^{output_len}}*".format("", output_len=output_len))
 print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
 print("*{:^{output_len}}*".format("", output_len=output_len))
 print("*" * (output_len + 2))
-master.setStartSolution()
 master.File2Log()
+
+# Initialize and solve relaxed model
+master.setStartSolution()
 master.updateModel()
 master.solveRelaxModel()
-#master.model.write("Initial.lp")
-#master.model.write(f"Sol-{itr}.sol")
+
 
 # Get Duals from MP
-duals_i = master.getDuals_i()
-duals_ts = master.getDuals_ts()
+duals_i0 = master.getDuals_i()
+duals_ts0 = master.getDuals_ts()
 
 print("*" * (output_len + 2))
 print("*{:^{output_len}}*".format("", output_len=output_len))
@@ -105,15 +97,19 @@ print("*{:^{output_len}}*".format("", output_len=output_len))
 print("*" * (output_len + 2))
 print("*{:^{output_len}}*".format("", output_len=output_len))
 
+# Create empty dict to save schedules
 Iter_schedules = {}
 for index in I_list:
     Iter_schedules[f"Nurse_{index}"] = []
+
+# Start time count
 t0 = time.time()
 
 while (modelImprovable) and itr < max_itr:
     # Start
     itr += 1
     print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
+
     # Solve RMP
     master.current_iteration = itr + 1
     master.solveRelaxModel()
@@ -122,35 +118,45 @@ while (modelImprovable) and itr < max_itr:
 
     # Get Duals
     duals_i = master.getDuals_i()
-    print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_i}", output_len=output_len))
     duals_ts = master.getDuals_ts()
+    print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_ts}", output_len=output_len))
 
+    # Save current optimality gap
     gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
     gap_rc_hist.append(gap_rc)
 
     # Solve SPs
     modelImprovable = False
     for index in I_list:
+        # Build SP
         subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed))
         subproblem.buildModel()
 
+        # Save time to solve SP
         sub_t0 = time.time()
         subproblem.solveModel(time_Limit)
         sub_totaltime = time.time() - sub_t0
         timeHist.append(sub_totaltime)
 
+        # Get optimal values
         optx_values = subproblem.getOptX()
         Iter_schedules[f"Nurse_{index}"].append(optx_values)
         print("*{:^{output_len}}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}", output_len=output_len))
 
+        # Check if SP is solvable
         status = subproblem.getStatus()
         if status != 2:
             raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
 
+        # Save ObjVal History
         reducedCost = subproblem.model.objval
         objValHistSP.append(reducedCost)
-        last_itr = itr + 1
         print("*{:^{output_len}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", output_len=output_len))
+
+        # Increase latest used iteration
+        last_itr = itr + 1
+
+        # Generate and add columns with reduced cost
         if reducedCost < -1e-6:
             Schedules = subproblem.getNewSchedule()
             master.addColumn(index, itr, Schedules)
@@ -158,9 +164,11 @@ while (modelImprovable) and itr < max_itr:
             master.updateModel()
             modelImprovable = True
             print("*{:^{output_len}}*".format(f"Reduced-cost < 0 columns found...", output_len=output_len))
-    master.updateModel()
-    #master.model.write(f"LP-Iteration-{itr}.lp")
 
+    # Update Model
+    master.updateModel()
+
+    # Calculate Metrics
     avg_rc = sum(objValHistSP) / len(objValHistSP)
     avg_rc_hist.append(avg_rc)
     objValHistSP.clear()
@@ -183,15 +191,14 @@ while (modelImprovable) and itr < max_itr:
 
 # Remove Variables
 remove_vars(master, I_list, T_list, K_list, last_itr, max_itr)
+
+# Solve Master Problem with integrality restored
 master.finalSolve(time_Limit)
+
+# Capture total time and objval
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
 lambda_values = master.printLambdas()
-for i in master.nurses:
-   for r in master.roster:
-      if lambda_values[(i,r)] == 1:
-          print("*{:^{output_len}}*".format(f"For nurse {i}, Iteration {r-1} is used.", output_len=output_len))
-print("*{:^{output_len}}*".format("", output_len=output_len))
 
 # Print Plots
 plot_obj_val(objValHistRMP, 'plot_obj')

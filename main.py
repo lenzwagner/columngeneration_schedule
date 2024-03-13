@@ -1,6 +1,6 @@
 from gurobipy import *
-from kaleido import *
 import gurobipy as gu
+import plotly.io as pio
 import pandas as pd
 import os
 import time
@@ -498,8 +498,10 @@ ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), pro
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 
 # SchedulePlot
-#fig1 = visualize_schedule(problem.get_final_values_dict(), len(T_list), round(final_obj_cg, 3))
-#fig1.write_image(f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/fig1.pdf')
+fig = visualize_schedule(problem.get_final_values_dict(), len(T_list), round(final_obj_cg, 3))
+pio.write_image(fig, f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/physician_schedules.png',
+                scale=1, width=1000, height=800,
+                engine='kaleido')
 
 print(gap_rc_hist)
 optimalityplot(objValHistRMP, gap_rc_hist, last_itr)

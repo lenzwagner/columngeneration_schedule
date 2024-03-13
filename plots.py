@@ -70,16 +70,18 @@ def visualize_schedule(dic, days, undercoverage):
 
     title_str = f'Physician Schedules | Total Undercoverage: {undercoverage}'
     fig = px.imshow(data[[str(i) for i in range(1, days + 1)]],
-                    color_continuous_scale=["purple", "orange", "yellow", 'pink'])
+                    color_continuous_scale=['#264653', '#2A9D8F', '#E9C46A', '#E76F51'])
 
     fig.update(data=[{'hovertemplate': "Day: %{x}<br>"
                                        "Physician: %{y}<br>"}])
 
     colorbar = dict(thickness=35,
                     tickvals=[0, 1, 2, 3],
-                    ticktext=['Off', 'Evening', 'Noon', 'Morning'])
+                    ticktext=['Off', 'Evening', 'Noon', 'Morning'],
+                    title = "Shift-Types")
 
     fig.update(layout_coloraxis_showscale=True, layout_coloraxis_colorbar=colorbar)
+
 
     x_ticks = np.arange(1, days + 1)
     day_labels = ['Day ' + str(i) for i in x_ticks]
@@ -98,19 +100,6 @@ def visualize_schedule(dic, days, undercoverage):
             'yanchor': 'top',
             'font': {'size': 24}
         }
-    )
-
-    fig.update_layout(
-        xaxis=dict(
-            showgrid=True,
-            gridwidth=1.5,
-            gridcolor='LightGray'
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridwidth=1.5,
-            gridcolor='LightGray'
-        )
     )
 
     fig.show()

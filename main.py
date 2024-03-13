@@ -25,6 +25,8 @@ I_list1 = pd.DataFrame(I_list, columns=['I'])
 T_list1 = pd.DataFrame(T_list, columns=['T'])
 K_list1 = pd.DataFrame(K_list, columns=['K'])
 DataDF = pd.concat([I_list1, T_list1, K_list1], axis=1)
+
+# Demand
 Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}

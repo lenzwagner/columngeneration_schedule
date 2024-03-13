@@ -11,7 +11,10 @@ def createDir():
     if not os.path.exists("images"):
         os.mkdir("images")
 
-def plot_obj_val(objValHistRMP):
+def plot_obj_val(objValHistRMP, name):
+    file = str(name)
+    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
+
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o')
     sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP)
@@ -20,9 +23,13 @@ def plot_obj_val(objValHistRMP):
     plt.ylabel('Objective function value')
     title = 'Optimal objective value: ' + str(round(objValHistRMP[-1], 2))
     plt.title(title)
+    plt.savefig(file_name, format='png')
     plt.show()
 
-def plot_avg_rc(avg_rc_hist):
+def plot_avg_rc(avg_rc_hist, name):
+    file = str(name)
+    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
+
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o')
     sns.lineplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist)
@@ -31,11 +38,15 @@ def plot_avg_rc(avg_rc_hist):
     plt.ylabel('Reduced Cost')
     title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
     plt.title(title)
+    plt.savefig(file_name, format='png')
     plt.show()
 
-def plot_together(objValHistRMP, avg_rc_hist):
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+def plot_together(objValHistRMP, avg_rc_hist, name):
+    file = str(name)
+    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
 
+
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o', ax=axs[0])
     sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, ax=axs[0])
     axs[0].set_xlabel('CG Iterations')
@@ -52,6 +63,7 @@ def plot_together(objValHistRMP, avg_rc_hist):
     title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
     axs[1].set_title(title)
 
+    plt.savefig(file_name, format='png')
     plt.show()
 
 def visualize_schedule(dic, days, undercoverage):
@@ -142,7 +154,10 @@ def plot_gap(df1, ax):
     ax.yaxis.set_major_formatter(formatter)
 
 
-def optimalityplot(df, df2, last_itr):
+def optimalityplot(df, df2, last_itr, name):
+    file = str(name)
+    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
+
     with plt.style.context("seaborn-v0_8"):
         _, ax = plt.subplots(figsize=(8, 5))
 
@@ -159,5 +174,7 @@ def optimalityplot(df, df2, last_itr):
 
         print(combine_legends(ax, ax2))
         ax.legend(*combine_legends(ax, ax2))
+
+        plt.savefig(file_name, format='png')
 
         plt.show()

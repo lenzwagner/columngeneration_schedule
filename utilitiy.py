@@ -1,4 +1,5 @@
 from itertools import chain
+import random
 
 def ListComp(list1, list2, num):
     if list1 == list2:
@@ -69,3 +70,23 @@ def remove_vars(master, I_list, T_list, K_list, last_itr, max_itr):
                     var = master.model.getVarByName(var_name)
                     master.model.remove(var)
                     master.model.update()
+
+
+def create_demand_dict(num_days, total_demand):
+    demand_dict = {}
+
+    for day in range(1, num_days + 1):
+        remaining_demand = total_demand
+        shifts = [0, 0, 0]
+
+        while remaining_demand > 0:
+            shift_idx = random.randint(0, 2)
+            shift_demand = min(remaining_demand, random.randint(0, remaining_demand))
+            shifts[shift_idx] += shift_demand
+            remaining_demand -= shift_demand
+
+        for i in range(3):
+            shifts[i] = round(shifts[i])
+            demand_dict[(day, i + 1)] = shifts[i]
+
+    return demand_dict

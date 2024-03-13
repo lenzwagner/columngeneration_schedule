@@ -2,6 +2,7 @@ import plotly.io as pio
 import pandas as pd
 import os
 import time
+import numpy as np
 from plots import plot_obj_val, plot_avg_rc, plot_together, optimalityplot, visualize_schedule
 from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars
 from results import printResults
@@ -16,25 +17,24 @@ for file in os.listdir():
         os.remove(file)
 
 # Set of indices
-I_list = [1, 2, 3]
-T_list = [1, 2, 3, 4, 5, 6, 7]
-K_list = [1, 2, 3]
+I, T, K = [1, 2, 3], [1, 2, 3, 4, 5, 6, 7], [1, 2, 3]
 
 # Create Dataframes
-I_list1 = pd.DataFrame(I_list, columns=['I'])
-T_list1 = pd.DataFrame(T_list, columns=['T'])
-K_list1 = pd.DataFrame(K_list, columns=['K'])
-DataDF = pd.concat([I_list1, T_list1, K_list1], axis=1)
+data = pd.DataFrame({
+    'I': I + [np.nan] * (max(len(I), len(T), len(K)) - len(I)),
+    'T': T + [np.nan] * (max(len(I), len(T), len(K)) - len(T)),
+    'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
+})
 
 # Demand
-Demand_Dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
+demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}
 
 # Generate Alpha's
 def gen_alpha(seed):
     random.seed(seed)
-    alpha = {(i, t): round(random.random(), 3) for i in I_list for t in T_list}
+    alpha = {(i, t): round(random.random(), 3) for i in I for t in T}
     return alpha
 
 # General Parameter
@@ -45,26 +45,26 @@ output_len = 98
 mue = 1e-4
 
 
-### Compact Solver ###
+# **** Compact Solver ****
 # Build and solve model
-problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
+problem = Problem(data, demand_dict, gen_alpha(seed))
 problem.buildModel()
 problem.solveModel(time_Limit)
 
-# Store metrics
+# Calculate objective function value and store model runtime
 obj_val_problem = round(problem.model.objval, 3)
 time_problem = round(problem.getTime(), 4)
 vals_prob = problem.get_final_values()
 
 
-#### Column Generation ###
-# CG Prerequisites
+# **** Column Generation ****
+# Column generation prerequisites
 modelImprovable = True
 t0 = time.time()
 itr = 0
 last_itr = 0
 
-# Create empty lists
+# Create empty results lists and dicts
 objValHistSP = []
 timeHist = []
 objValHistRMP = []
@@ -72,8 +72,13 @@ avg_rc_hist = []
 avg_sp_time = []
 gap_rc_hist = []
 
+Iter_schedules = {}
+for index in I:
+    Iter_schedules[f"Nurse_{index}"] = []
+
+
 # Build MP
-master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, last_itr, output_len)
+master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len)
 master.buildModel()
 print("*" * (output_len + 2))
 print("*{:^{output_len}}*".format("", output_len=output_len))
@@ -87,8 +92,7 @@ master.setStartSolution()
 master.updateModel()
 master.solveRelaxModel()
 
-
-# Get Duals from MP
+# Retrieve dual values
 duals_i0 = master.getDuals_i()
 duals_ts0 = master.getDuals_ts()
 
@@ -98,11 +102,6 @@ print("*{:^{output_len}}*".format("***** Starting Column Generation *****", outp
 print("*{:^{output_len}}*".format("", output_len=output_len))
 print("*" * (output_len + 2))
 print("*{:^{output_len}}*".format("", output_len=output_len))
-
-# Create empty dict to save schedules
-Iter_schedules = {}
-for index in I_list:
-    Iter_schedules[f"Nurse_{index}"] = []
 
 # Start time count
 t0 = time.time()
@@ -129,9 +128,9 @@ while (modelImprovable) and itr < max_itr:
 
     # Solve SPs
     modelImprovable = False
-    for index in I_list:
+    for index in I:
         # Build SP
-        subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed))
+        subproblem = Subproblem(duals_i, duals_ts, data, index, 1e6, itr, gen_alpha(seed))
         subproblem.buildModel()
 
         # Save time to solve SP
@@ -192,7 +191,7 @@ while (modelImprovable) and itr < max_itr:
 
 
 # Remove Variables
-remove_vars(master, I_list, T_list, K_list, last_itr, max_itr)
+remove_vars(master, I, T, K, last_itr, max_itr)
 
 # Solve Master Problem with integrality restored
 master.finalSolve(time_Limit)
@@ -213,15 +212,13 @@ optimalityplot(objValHistRMP, gap_rc_hist, last_itr, 'optimality_plot')
 printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, output_len)
 
 # Roster Check
-ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I_list), problem.get_final_values(), output_len)
+ListComp(get_nurse_schedules(Iter_schedules, master.printLambdas(), I), problem.get_final_values(), output_len)
 
 # Optimality check
 is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 
 # SchedulePlot
-fig = visualize_schedule(problem.get_final_values_dict(), len(T_list), round(final_obj_cg, 3))
+fig = visualize_schedule(problem.get_final_values_dict(), len(T), round(final_obj_cg, 3))
 pio.write_image(fig, f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/physician_schedules.png',
                 scale=1, width=1000, height=800,
                 engine='kaleido')
-
-print(f"Average time per SP: {avg_sp_time}")

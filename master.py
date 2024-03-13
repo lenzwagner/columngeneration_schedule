@@ -2,16 +2,16 @@ from gurobipy import *
 import gurobipy as gu
 
 class MasterProblem:
-    def __init__(self, dfData, DemandDF, max_iteration, current_iteration, last ,nr):
+    def __init__(self, df, Demand, max_iteration, current_iteration, last ,nr):
         self.iteration = current_iteration
         self.max_iteration = max_iteration
-        self.nurses = dfData['I'].dropna().astype(int).unique().tolist()
-        self.days = dfData['T'].dropna().astype(int).unique().tolist()
-        self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
+        self.nurses = df['I'].dropna().astype(int).unique().tolist()
+        self.days = df['T'].dropna().astype(int).unique().tolist()
+        self.shifts = df['K'].dropna().astype(int).unique().tolist()
         self._current_iteration = current_iteration
         self.roster = [i for i in range(1, self.max_iteration + 2)]
         self.rosterinitial = [i for i in range(1, 2)]
-        self.demand = DemandDF
+        self.demand = Demand
         self.model = gu.Model("MasterProblem")
         self.cons_demand = {}
         self.newvar = {}

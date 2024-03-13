@@ -2,15 +2,15 @@ from gurobipy import *
 import gurobipy as gu
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, dfData, i, M, iteration, alpha):
+    def __init__(self, duals_i, duals_ts, df, i, BigM, iteration, alpha):
         itr = iteration + 1
-        self.days = dfData['T'].dropna().astype(int).unique().tolist()
-        self.shifts = dfData['K'].dropna().astype(int).unique().tolist()
+        self.days = df['T'].dropna().astype(int).unique().tolist()
+        self.shifts = df['K'].dropna().astype(int).unique().tolist()
         self.duals_i = duals_i
         self.duals_ts = duals_ts
         self.Max = 5
         self.Min = 2
-        self.M = M
+        self.M = BigM
         self.alpha = alpha
         self.model = gu.Model("Subproblem")
         self.index = i
@@ -43,7 +43,6 @@ class Subproblem:
             for t in range(1, len(self.days) - self.Max + 1):
                 self.model.addLConstr(gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max)) <= self.Max)
             self.model.addLConstr(self.Min <= quicksum(self.y[i, t] for t in self.days))
-
 
     def generateObjective(self):
         self.model.setObjective(

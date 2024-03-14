@@ -32,6 +32,8 @@ class MasterProblem:
         self.motivation_i = self.model.addVars(self.nurses, self.days, self.shifts, self.roster,
                                                vtype=gu.GRB.CONTINUOUS, lb=0, ub=1, name='motivation_i')
         self.lmbda = self.model.addVars(self.nurses, self.roster, vtype=gu.GRB.BINARY, lb=0, name='lmbda')
+        self.model.update()
+
 
     def generateConstraints(self):
         for i in self.nurses:
@@ -41,6 +43,7 @@ class MasterProblem:
                 self.cons_demand[t, s] = self.model.addConstr(
                     gu.quicksum(self.motivation_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.rosterinitial) +
                     self.slack[t, s] >= self.demand[t, s], "demand("+str(t)+","+str(s)+")")
+        self.model.update()
         return self.cons_lmbda, self.cons_demand
 
     def generateObjective(self):
@@ -154,3 +157,24 @@ class MasterProblem:
                 print("*{:^{output_len}}*".format("", output_len=self.output_len))
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
+
+
+    def generateNewVariables(self):
+        self.theta_plus = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, lb=0, name='theta_plus')
+        self.theta_minus = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, lb=0, name='theta_minus')
+        self.delta_plus = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, name='delta_plus')
+        self.delta_minus = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, name='delta_minus')
+        self.zeta_plus = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, name='zeta_plus')
+        self.zeta_minus = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, name='zeta_minus')
+        self.model.update()
+
+    def generateNewConstraints(self):
+        for t in self.days:
+            for s in self.shifts:
+                self.model.addLConstr(self.delta_minus[t, s] <= self.zeta_minus[t, s])
+                self.model.addLConstr(self.delta_plus[t, s] <= self.zeta_plus[t, s])
+        self.model.update()
+
+    def generateNewObjective(self):
+        objective_expr = gu.quicksum(self.slack[t, s] for t in self.days for s in self.shifts) + gu.quicksum(self.theta_plus[d, s] * self.delta_plus[d, s] for d in self.days for s in self.shifts) - gu.quicksum(self.theta_minus[d, s] * self.delta_minus[d, s] for d in self.days for s in self.shifts)
+        self.model.setObjective(objective_expr, sense=gu.GRB.MINIMIZE)

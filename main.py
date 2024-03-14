@@ -123,7 +123,8 @@ while (modelImprovable) and itr < max_itr:
     # Get Duals
     duals_i = master.getDuals_i()
     duals_ts = master.getDuals_ts()
-    print("*{:^{output_len}}*".format(f"Duals in Iteration {itr}: {duals_ts}", output_len=output_len))
+    print("*{:^{output_len}}*".format(f"Duals_i in Iteration {itr}: {duals_i}", output_len=output_len))
+    print("*{:^{output_len}}*".format(f"Duals_ts in Iteration {itr}: {duals_ts}", output_len=output_len))
 
     # Save current optimality gap
     gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
@@ -222,6 +223,6 @@ is_Opt(seed, final_obj_cg, obj_val_problem, output_len)
 
 # SchedulePlot
 fig = visualize_schedule(problem.get_final_values_dict(), len(T), round(final_obj_cg, 3))
-pio.write_image(fig, f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/physician_schedules.png',
+pio.write_image(fig, f'./images/physician_schedules.png',
                 scale=1, width=1000, height=800,
                 engine='kaleido')

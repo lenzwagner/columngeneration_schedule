@@ -13,7 +13,7 @@ def createDir():
 
 def plot_obj_val(objValHistRMP, name):
     file = str(name)
-    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
+    file_name = f'./images/' + file + '.png'
 
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o')
@@ -28,7 +28,7 @@ def plot_obj_val(objValHistRMP, name):
 
 def plot_avg_rc(avg_rc_hist, name):
     file = str(name)
-    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
+    file_name = f'./images/' + file + '.png'
 
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o')
@@ -43,8 +43,7 @@ def plot_avg_rc(avg_rc_hist, name):
 
 def plot_together(objValHistRMP, avg_rc_hist, name):
     file = str(name)
-    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
-
+    file_name = f'./images/' + file + '.png'
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o', ax=axs[0])
@@ -156,7 +155,7 @@ def plot_gap(df1, ax):
 
 def optimalityplot(df, df2, last_itr, name):
     file = str(name)
-    file_name = f'G:/Meine Ablage/Doktor/Dissertation/Paper 1/Data/Pics/' + file + '.png'
+    file_name = f'./images/' + file + '.png'
 
     with plt.style.context("seaborn-v0_8"):
         _, ax = plt.subplots(figsize=(8, 5))

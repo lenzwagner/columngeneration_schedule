@@ -4,7 +4,7 @@ import os
 import time
 import numpy as np
 from plots import plot_obj_val, plot_avg_rc, plot_together, optimalityplot, visualize_schedule
-from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars
+from utilitiy import get_nurse_schedules, ListComp, is_Opt, remove_vars, generate_cost
 from results import printResults
 from standard import Problem
 from master import MasterProblem
@@ -30,6 +30,8 @@ data = pd.DataFrame({
 demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}
+
+demand = generate_cost(14, 10)
 
 # Generate Alpha's
 def gen_alpha(seed):

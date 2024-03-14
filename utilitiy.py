@@ -90,3 +90,15 @@ def create_demand_dict(num_days, total_demand):
             demand_dict[(day, i + 1)] = shifts[i]
 
     return demand_dict
+
+def generate_cost(num_days, phys):
+    cost = {}
+    shifts = [1, 2, 3]
+    for day in range(1, num_days + 2):
+        num_costs = phys
+        for shift in shifts[:-1]:
+            shift_cost = random.randrange(0, num_costs)
+            cost[(day, shift)] = shift_cost
+            num_costs -= shift_cost
+        cost[(day, shifts[-1])] = num_costs
+    return cost

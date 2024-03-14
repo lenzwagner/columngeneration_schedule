@@ -144,7 +144,7 @@ class MasterProblem:
             self.model.optimize()
             #self.model.write("Final.lp")
             #self.model.write("Final.sol")
-            if self.model.status == GRB.OPTIMAL:
+            if self.model.status == gu.GRB.OPTIMAL:
                 print("*" * (self.output_len + 2))
                 print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=self.output_len))
                 print("*{:^{output_len}}*".format("", output_len=self.output_len))

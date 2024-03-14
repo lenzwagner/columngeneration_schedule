@@ -49,13 +49,14 @@ mue = 1e-4
 
 # **** Compact Solver ****
 # Build and solve model
+problem_t0 = time.time()
 problem = Problem(data, demand_dict, gen_alpha(seed))
 problem.buildModel()
 problem.solveModel(time_Limit)
 
 # Calculate objective function value and store model runtime
 obj_val_problem = round(problem.model.objval, 3)
-time_problem = round(problem.getTime(), 4)
+time_problem = time.time() - problem_t0
 vals_prob = problem.get_final_values()
 
 

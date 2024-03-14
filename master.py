@@ -52,6 +52,7 @@ class MasterProblem:
 
     def solveRelaxModel(self):
         try:
+            self.model.Params.OutputFlag = 0
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')
@@ -141,7 +142,7 @@ class MasterProblem:
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-2
-            self.model.Params.OutputFlag = 1
+            self.model.Params.OutputFlag = 0
             self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
             self.model.update()
             self.model.optimize()

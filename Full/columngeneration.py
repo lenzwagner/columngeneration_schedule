@@ -56,6 +56,7 @@ print(obj_val_problem)
 # **** Column Generation ****
 # Prerequisites
 modelImprovable = True
+reached_max_itr = False
 t0 = time.time()
 itr = 0
 last_itr = 0
@@ -157,6 +158,10 @@ while (modelImprovable) and itr < max_itr:
     timeHist.clear()
 
     print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
+
+    if itr == max_itr - 1:
+        reached_max_itr = True
+        break
 
     if not modelImprovable:
         print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))

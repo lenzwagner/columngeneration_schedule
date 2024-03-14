@@ -130,6 +130,7 @@ class MasterProblem:
 
     def solveRelaxModel(self):
         try:
+            self.model.Params.OutputFlag = 0
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')

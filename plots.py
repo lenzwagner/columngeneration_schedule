@@ -81,7 +81,7 @@ def visualize_schedule(dic, days, undercoverage):
 
     title_str = f'Physician Schedules | Total Undercoverage: {undercoverage}'
     fig = px.imshow(data[[str(i) for i in range(1, days + 1)]],
-                    color_continuous_scale=['#E76F51', '#2A9D8F', '#E9C46A', '#264653'])
+                    color_continuous_scale=[ '#E57373' , '#4B8B9F', '#DAA520' ,'#76B041'])
 
     fig.update(data=[{'hovertemplate': "Day: %{x}<br>"
                                        "Physician: %{y}<br>"}])

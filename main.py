@@ -41,7 +41,7 @@ def gen_alpha(seed):
 
 # General Parameter
 time_Limit = 3600
-max_itr = 10
+max_itr = 1
 seed = 123
 output_len = 98
 mue = 1e-4
@@ -63,136 +63,147 @@ vals_prob = problem.get_final_values()
 # **** Column Generation ****
 # Column generation prerequisites
 modelImprovable = True
-t0 = time.time()
-itr = 0
-last_itr = 0
+reached_max_itr = False
 
-# Create empty results lists and dicts
-objValHistSP = []
-timeHist = []
-objValHistRMP = []
-avg_rc_hist = []
-avg_sp_time = []
-gap_rc_hist = []
+while True:
+    # Initialize iterations
+    itr = 0
+    t0 = time.time()
+    last_itr = 0
 
-Iter_schedules = {}
-for index in I:
-    Iter_schedules[f"Nurse_{index}"] = []
+    # Create empty results lists and dicts
+    objValHistSP = []
+    timeHist = []
+    objValHistRMP = []
+    avg_rc_hist = []
+    avg_sp_time = []
+    gap_rc_hist = []
 
-
-# Build MP
-master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len)
-master.buildModel()
-print("*" * (output_len + 2))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print("*" * (output_len + 2))
-master.File2Log()
-
-# Initialize and solve relaxed model
-master.setStartSolution()
-master.updateModel()
-master.solveRelaxModel()
-
-# Retrieve dual values
-duals_i0 = master.getDuals_i()
-duals_ts0 = master.getDuals_ts()
-
-print("*" * (output_len + 2))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print("*{:^{output_len}}*".format("***** Starting Column Generation *****", output_len=output_len))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print("*" * (output_len + 2))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-
-# Start time count
-t0 = time.time()
-
-while (modelImprovable) and itr < max_itr:
-    # Start
-    itr += 1
-    print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
-
-    # Solve RMP
-    master.current_iteration = itr + 1
-    master.solveRelaxModel()
-    objValHistRMP.append(master.model.objval)
-    print("*{:^{output_len}}*".format(f"Current RMP ObjVal: {objValHistRMP}", output_len=output_len))
-
-    # Get Duals
-    duals_i = master.getDuals_i()
-    duals_ts = master.getDuals_ts()
-    print("*{:^{output_len}}*".format(f"Duals_i in Iteration {itr}: {duals_i}", output_len=output_len))
-    print("*{:^{output_len}}*".format(f"Duals_ts in Iteration {itr}: {duals_ts}", output_len=output_len))
-
-    # Save current optimality gap
-    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
-    gap_rc_hist.append(gap_rc)
-
-    # Solve SPs
-    modelImprovable = False
+    Iter_schedules = {}
     for index in I:
-        # Build SP
-        subproblem = Subproblem(duals_i, duals_ts, data, index, 1e6, itr, gen_alpha(seed))
-        subproblem.buildModel()
+        Iter_schedules[f"Nurse_{index}"] = []
 
-        # Save time to solve SP
-        sub_t0 = time.time()
-        subproblem.solveModel(time_Limit)
-        sub_totaltime = time.time() - sub_t0
-        timeHist.append(sub_totaltime)
 
-        # Get optimal values
-        optx_values = subproblem.getOptX()
-        Iter_schedules[f"Nurse_{index}"].append(optx_values)
-        print("*{:^{output_len}}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}", output_len=output_len))
-
-        # Check if SP is solvable
-        status = subproblem.getStatus()
-        if status != 2:
-            raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
-
-        # Save ObjVal History
-        reducedCost = subproblem.model.objval
-        objValHistSP.append(reducedCost)
-        print("*{:^{output_len}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", output_len=output_len))
-
-        # Increase latest used iteration
-        last_itr = itr + 1
-
-        # Generate and add columns with reduced cost
-        if reducedCost < -1e-6:
-            Schedules = subproblem.getNewSchedule()
-            master.addColumn(index, itr, Schedules)
-            master.addLambda(index, itr)
-            master.updateModel()
-            modelImprovable = True
-            print("*{:^{output_len}}*".format(f"Reduced-cost < 0 columns found...", output_len=output_len))
-
-    # Update Model
-    master.updateModel()
-
-    # Calculate Metrics
-    avg_rc = sum(objValHistSP) / len(objValHistSP)
-    avg_rc_hist.append(avg_rc)
-    objValHistSP.clear()
-
-    avg_time = sum(timeHist)/len(timeHist)
-    avg_sp_time.append(avg_time)
-    timeHist.clear()
-
+    # Build MP
+    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len)
+    master.buildModel()
+    print("*" * (output_len + 2))
     print("*{:^{output_len}}*".format("", output_len=output_len))
-    print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
+    print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
     print("*{:^{output_len}}*".format("", output_len=output_len))
     print("*" * (output_len + 2))
+    master.File2Log()
 
-    if not modelImprovable:
+    # Initialize and solve relaxed model
+    master.setStartSolution()
+    master.updateModel()
+    master.solveRelaxModel()
+
+    # Retrieve dual values
+    duals_i0 = master.getDuals_i()
+    duals_ts0 = master.getDuals_ts()
+
+    print("*" * (output_len + 2))
+    print("*{:^{output_len}}*".format("", output_len=output_len))
+    print("*{:^{output_len}}*".format("***** Starting Column Generation *****", output_len=output_len))
+    print("*{:^{output_len}}*".format("", output_len=output_len))
+    print("*" * (output_len + 2))
+    print("*{:^{output_len}}*".format("", output_len=output_len))
+
+    # Start time count
+    t0 = time.time()
+
+    while (modelImprovable) and itr < max_itr:
+        # Start
+        itr += 1
+        print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
+
+        # Solve RMP
+        master.current_iteration = itr + 1
+        master.solveRelaxModel()
+        objValHistRMP.append(master.model.objval)
+        print("*{:^{output_len}}*".format(f"Current RMP ObjVal: {objValHistRMP}", output_len=output_len))
+
+        # Get Duals
+        duals_i = master.getDuals_i()
+        duals_ts = master.getDuals_ts()
+        print("*{:^{output_len}}*".format(f"Duals_i in Iteration {itr}: {duals_i}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Duals_ts in Iteration {itr}: {duals_ts}", output_len=output_len))
+
+        # Save current optimality gap
+        gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
+        gap_rc_hist.append(gap_rc)
+
+        # Solve SPs
+        modelImprovable = False
+        for index in I:
+            # Build SP
+            subproblem = Subproblem(duals_i, duals_ts, data, index, 1e6, itr, gen_alpha(seed))
+            subproblem.buildModel()
+
+            # Save time to solve SP
+            sub_t0 = time.time()
+            subproblem.solveModel(time_Limit)
+            sub_totaltime = time.time() - sub_t0
+            timeHist.append(sub_totaltime)
+
+            # Get optimal values
+            optx_values = subproblem.getOptX()
+            Iter_schedules[f"Nurse_{index}"].append(optx_values)
+            print("*{:^{output_len}}*".format(f"Optimal Values Iteration {itr} for SP {index}: {subproblem.getOptX()}", output_len=output_len))
+
+            # Check if SP is solvable
+            status = subproblem.getStatus()
+            if status != 2:
+                raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
+
+            # Save ObjVal History
+            reducedCost = subproblem.model.objval
+            objValHistSP.append(reducedCost)
+            print("*{:^{output_len}}*".format(f"Reduced cost in Iteration {itr}: {reducedCost}", output_len=output_len))
+
+            # Increase latest used iteration
+            last_itr = itr + 1
+
+            # Generate and add columns with reduced cost
+            if reducedCost < -1e-6:
+                Schedules = subproblem.getNewSchedule()
+                master.addColumn(index, itr, Schedules)
+                master.addLambda(index, itr)
+                master.updateModel()
+                modelImprovable = True
+                print("*{:^{output_len}}*".format(f"Reduced-cost < 0 columns found...", output_len=output_len))
+
+        # Update Model
+        master.updateModel()
+
+        # Calculate Metrics
+        avg_rc = sum(objValHistSP) / len(objValHistSP)
+        avg_rc_hist.append(avg_rc)
+        objValHistSP.clear()
+
+        avg_time = sum(timeHist)/len(timeHist)
+        avg_sp_time.append(avg_time)
+        timeHist.clear()
+
         print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
         print("*{:^{output_len}}*".format("", output_len=output_len))
         print("*" * (output_len + 2))
 
+        if not modelImprovable:
+            print("*{:^{output_len}}*".format("", output_len=output_len))
+            print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
+            print("*" * (output_len + 2))
+
+            break
+
+    if modelImprovable and itr == max_itr:
+        print("*{:^{output_len}}*".format("More iterations needed. Increase max_itr and restart the process.", output_len=output_len))
+        max_itr *= 2
+    else:
+        break
 
 # Remove Variables
 remove_vars(master, I, T, K, last_itr, max_itr)

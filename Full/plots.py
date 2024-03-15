@@ -9,10 +9,10 @@ def violinplots(list_cg, list_compact):
     df = pd.DataFrame(list_cg, columns=['Time'])
     df1 = pd.DataFrame(list_compact, columns=['Time'])
 
-    sns.violinplot(x=df["Time"], ax=axs[0])
+    sns.violinplot(x=df["Time"], ax=axs[0], inner_kws=dict(box_width=15, whis_width=2, color=".8"))
     axs[0].set_title("Column Generation")
 
-    sns.violinplot(x=df1["Time"], ax=axs[1])
+    sns.violinplot(x=df1["Time"], ax=axs[1], inner_kws=dict(box_width=15, whis_width=2, color=".8"))
     axs[1].set_title("Compact Solver")
 
     plt.show()

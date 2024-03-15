@@ -15,29 +15,14 @@ data = pd.DataFrame({
     'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
 })
 
-# Additional Sets
-Min_WD_i = [2, 3, 2, 3]
-Max_WD_i = [5, 5, 5, 6]
-S_T = {1: 8, 2: 8, 3: 8}
-I_T = {1: 40, 2: 40, 3: 40, 4: 40}
-W_I = {1: 1, 2: 1, 3: 1, 4: 1}
-
-# Zipping
-Min_WD_i = {a: f for a, f in zip(I, Min_WD_i)}
-Max_WD_i = {a: g for a, g in zip(I, Max_WD_i)}
-
-# Demand Dict
-demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
-               (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
-               (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
-               (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
-
+# Empty Dicts
 optimal_results = {}
 gap_results = {}
 time_compact = {}
 time_cg = {}
 
-for seed in range(1, 101):
+# Start Reps
+for seed in range(1, 11):
     random.seed(seed)
     def generate_cost(num_days, phys):
         cost = {}
@@ -98,9 +83,6 @@ for seed in range(1, 101):
 
         master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len)
         master.buildModel()
-        print("*" * (output_len + 2))
-        print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
-        print("*" * (output_len + 2))
 
         # Initialize and solve relaxed model
         master.setStartSolution()
@@ -180,19 +162,11 @@ for seed in range(1, 101):
             avg_sp_time.append(avg_time)
             timeHist.clear()
 
-            print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
 
             if not modelImprovable:
-                print("*{:^{output_len}}*".format("", output_len=output_len))
-                print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
-                print("*{:^{output_len}}*".format("", output_len=output_len))
-                print("*" * (output_len + 2))
-
                 break
 
         if modelImprovable and itr == max_itr:
-            print("*{:^{output_len}}*".format("More iterations needed. Increase max_itr and restart the process.",
-                                              output_len=output_len))
             max_itr *= 2
         else:
             break
@@ -204,8 +178,7 @@ for seed in range(1, 101):
     total_time_cg = time.time() - t0
     final_obj_cg = master.model.objval
 
-    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100,
-                   3)
+    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
 
     def is_Opt(final_obj_cg, obj_val_problem):
         diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)

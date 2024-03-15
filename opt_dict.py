@@ -1,8 +1,11 @@
 from gurobipy import *
 import gurobipy as gu
 import pandas as pd
+import numpy as np
+import seaborn as sns
 import os
 import time
+from plots import *
 import random
 import matplotlib.pyplot as plt
 
@@ -351,8 +354,10 @@ class Problem:
 
 optimal_results = {}
 gap_results = {}
+time_compact = {}
+time_cg = {}
 
-for seed in range(1, 10001):
+for seed in range(100, 201):
 
     problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
     problem.buildModel()
@@ -438,7 +443,7 @@ for seed in range(1, 10001):
 
 
     def is_Opt(final_obj_cg, obj_val_problem):
-        diff = round(final_obj_cg, 4) - round(obj_val_problem, 4)
+        diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
         if diff == 0:
             is_optimal = 1
         else:
@@ -450,36 +455,13 @@ for seed in range(1, 10001):
     optimal_results[seed] = is_Opt(final_obj_cg, obj_val_problem)
     gap_results[seed] = gap_rc
 
-
-print("*" * (output_len + 2))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print("*{:^{output_len}}*".format("Final", output_len=output_len))
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print(optimal_results)
-print("*{:^{output_len}}*".format("", output_len=output_len))
-print("*" * (output_len + 2))
+    time_compact[seed] = time_problem
+    time_cg[seed] = round(total_time_cg, 2)
 
 
-def pie_chart(optimal):
-    zeros = sum(value == 0 for value in optimal.values())
-    ones = sum(value == 1 for value in optimal.values())
-
-    data = pd.DataFrame({'Category': ['Yes', 'No'], 'Count': [ones, zeros]})
-
-    plt.figure(figsize=(6, 6))
-    plt.pie(data['Count'], labels=data['Category'], colors=['#008fd5', '#fc4e07'], startangle=90, autopct='%1.1f%%')
-
-    plt.ylabel('')
-    plt.xlabel('')
-    plt.legend(labels=['Yes', 'No'], loc='lower right', bbox_to_anchor=(1.0, 0.3), title = "Optimal Solution?")
-
-    plt.show()
-
+# Get Pie-Chart
 pie_chart(optimal_results)
 
-
-filtered_values = [value for value in gap_results.values() if value > 1e-3]
-sum_filtered = sum(filtered_values)
-perc_gap = sum_filtered/len(filtered_values)
-print(perc_gap)
-
+# Violin Plots
+optBoxplot([value for value in gap_results.values() if value > 1e-8])
+violinplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))

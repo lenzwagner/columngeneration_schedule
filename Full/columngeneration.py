@@ -9,7 +9,7 @@ from subproblem import *
 from compactsolver import *
 
 # Set of indices
-I, T, K = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], [1, 2, 3]
+I, T, K = [1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [1, 2, 3]
 
 # Create Dataframes
 data = pd.DataFrame({
@@ -30,7 +30,7 @@ Min_WD_i = {a: f for a, f in zip(I, Min_WD_i)}
 Max_WD_i = {a: g for a, g in zip(I, Max_WD_i)}
 
 # Demand Dict
-demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
+demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
                (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
                (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
                (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
@@ -38,7 +38,7 @@ demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
 def generate_cost(num_days, phys):
     cost = {}
     shifts = [1, 2, 3]
-    for day in range(1, num_days + 2):
+    for day in range(1, num_days + 1):
         num_costs = phys
         for shift in shifts[:-1]:
             shift_cost = random.randrange(0, num_costs)
@@ -47,12 +47,11 @@ def generate_cost(num_days, phys):
         cost[(day, shifts[-1])] = num_costs
     return cost
 
-demand_dict1 = generate_cost(21, 10)
+demand_dict = generate_cost(len(T), len(I))
 
 # Parameter
 time_Limit = 3600
-max_itr = 100
-seed = 123
+max_itr = 50
 output_len = 98
 mue = 1e-4
 eps = 0.38

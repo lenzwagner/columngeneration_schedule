@@ -27,11 +27,11 @@ data = pd.DataFrame({
 })
 
 # Demand
-demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
+demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1,
                (4, 1): 1, (4, 2): 2, (4, 3): 0, (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1,
                (7, 1): 0, (7, 2): 3, (7, 3): 0}
 
-demand = generate_cost(14, 10)
+demand_dict = generate_cost(7, 3, K)
 
 # Generate Alpha's
 def gen_alpha(seed):
@@ -42,7 +42,7 @@ def gen_alpha(seed):
 # General Parameter
 time_Limit = 3600
 max_itr = 1
-seed = 123
+seed = 1234
 output_len = 98
 mue = 1e-4
 

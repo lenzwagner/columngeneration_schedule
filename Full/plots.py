@@ -9,8 +9,8 @@ def violinplots(list_cg, list_compact):
     df = pd.DataFrame(list_cg, columns=['Time'])
     df1 = pd.DataFrame(list_compact, columns=['Time'])
 
-    sns.violinplot(y=df["Time"], ax=axs[0], color=".8")
-    sns.violinplot(y=df1["Time"], ax=axs[1], color=".8")
+    sns.violinplot(x=df["Time"], ax=axs[0], color=".8", bw_adjust=.5, inner_kws=dict(box_width=15, whis_width=2, color=".8"))
+    sns.violinplot(x=df1["Time"], ax=axs[1], color=".8", bw_adjust=.5, inner_kws=dict(box_width=15, whis_width=2, color=".8"))
 
     median_cg = df["Time"].median()
     median_compact = df1["Time"].median()

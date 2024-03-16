@@ -99,7 +99,7 @@ class MasterProblem:
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
-            self.model.Params.MIPGap = 1e-2
+            self.model.Params.MIPGap = 1e-4
             self.model.Params.OutputFlag = 0
             self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
             self.model.update()
@@ -123,7 +123,7 @@ class MasterProblem:
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
-            self.model.Params.MIPGap = 1e-2
+            self.model.Params.MIPGap = 1e-4
             self.model.optimize()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))

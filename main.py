@@ -65,6 +65,18 @@ vals_prob = problem.get_final_values()
 modelImprovable = True
 reached_max_itr = False
 
+# Get Starting Solutions
+problem_start = Problem(data, demand_dict, gen_alpha(seed))
+problem_start.buildModel()
+problem_start.model.setParam('TimeLimit', 1)
+problem_start.model.update()
+problem_start.model.optimize()
+start_values = {}
+for i in I:
+    for t in T:
+        for s in K:
+            start_values[(i, t, s)] = problem_start.motivation[i ,t, s].x
+
 while True:
     # Initialize iterations
     itr = 0
@@ -85,7 +97,7 @@ while True:
 
 
     # Build MP
-    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len)
+    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
     master.buildModel()
     print("*" * (output_len + 2))
     print("*{:^{output_len}}*".format("", output_len=output_len))

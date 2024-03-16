@@ -1,7 +1,7 @@
 import gurobipy as gu
 
 class MasterProblem:
-    def __init__(self, df, Demand, max_iteration, current_iteration, last, nr, delta, zeta, decay, threshold):
+    def __init__(self, df, Demand, max_iteration, current_iteration, last, nr, delta, zeta, decay, threshold, start):
         self.iteration = current_iteration
         self.max_iteration = max_iteration
         self.nurses = df['I'].dropna().astype(int).unique().tolist()
@@ -22,6 +22,7 @@ class MasterProblem:
         self.initial_delta = delta
         self.initial_zeta = zeta
         self.zetal = threshold
+        self.start = start
 
     def buildModel(self):
         self.generateVariables()
@@ -102,7 +103,8 @@ class MasterProblem:
         for i in self.nurses:
             for t in self.days:
                 for s in self.shifts:
-                    self.model.addConstr(0 == self.performance_i[i ,t, s, 1])
+                    if (i, t, s) in self.start:
+                        self.model.addLConstr(self.performance_i[i ,t, s, 1] == self.start[i, t, s])
 
     def addColumn(self, index, itr, schedule):
         self.nurseIndex = index

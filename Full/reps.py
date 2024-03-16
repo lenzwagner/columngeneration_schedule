@@ -63,6 +63,18 @@ for seed in range(100, 121):
     modelImprovable = True
     reached_max_itr = False
 
+    # Get Starting Solutions
+    problem_start = Problem(data, demand_dict, eps)
+    problem_start.buildLinModel()
+    problem_start.model.setParam('TimeLimit', 1)
+    problem_start.model.update()
+    problem_start.model.optimize()
+    start_values = {}
+    for i in I:
+        for t in T:
+            for s in K:
+                start_values[(i, t, s)] = problem_start.perf[i, t, s].x
+
     while True:
         # Initialize iterations
         itr = 0
@@ -81,7 +93,7 @@ for seed in range(100, 121):
         for index in I:
             Iter_schedules[f"Physician_{index}"] = []
 
-        master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len)
+        master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
         master.buildModel()
 
         # Initialize and solve relaxed model

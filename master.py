@@ -2,7 +2,7 @@ from gurobipy import *
 import gurobipy as gu
 
 class MasterProblem:
-    def __init__(self, df, Demand, max_iteration, current_iteration, last ,nr):
+    def __init__(self, df, Demand, max_iteration, current_iteration, last, nr, start):
         self.iteration = current_iteration
         self.max_iteration = max_iteration
         self.nurses = df['I'].dropna().astype(int).unique().tolist()
@@ -19,7 +19,7 @@ class MasterProblem:
         self.max_itr = max_iteration
         self.cons_lmbda = {}
         self.output_len = nr
-
+        self.start = start
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
@@ -77,7 +77,8 @@ class MasterProblem:
         for i in self.nurses:
             for t in self.days:
                 for s in self.shifts:
-                    self.model.addConstr(0 == self.motivation_i[i ,t, s, 1])
+                    if (i, t, s) in self.start:
+                        self.model.addLConstr(self.motivation_i[i, t, s, 1] == self.start[i, t, s])
 
     def solveModel(self, timeLimit):
         try:

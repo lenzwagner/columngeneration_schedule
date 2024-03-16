@@ -64,6 +64,18 @@ print(obj_val_problem)
 modelImprovable = True
 reached_max_itr = False
 
+# Get Starting Solutions
+problem_start = Problem(data, demand_dict, eps)
+problem_start.buildLinModel()
+problem_start.model.setParam('TimeLimit', 1)
+problem_start.model.update()
+problem_start.model.optimize()
+start_values = {}
+for i in I:
+    for t in T:
+        for s in K:
+            start_values[(i, t, s)] = problem_start.perf[i ,t, s].x
+
 while True:
     # Initialize iterations
     itr = 0
@@ -82,7 +94,7 @@ while True:
     for index in I:
         Iter_schedules[f"Physician_{index}"] = []
 
-    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, 1, 0.1, 0.7, threshold)
+    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, 1, 0.1, 0.7, threshold, start_values)
     master.buildModel()
     print("*" * (output_len + 2))
     print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))

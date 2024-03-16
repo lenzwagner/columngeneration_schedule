@@ -184,13 +184,47 @@ def violinplots(list_cg, list_compact):
     df = pd.DataFrame(list_cg, columns=['Time'])
     df1 = pd.DataFrame(list_compact, columns=['Time'])
 
-    sns.violinplot(x=df["Time"], inner_kws=dict(box_width=15, whis_width=2, color=".8"), ax=axs[0])
-    axs[0].set_title("Column Generation")
+    sns.violinplot(y=df["Time"], ax=axs[0], color=".8")
+    sns.violinplot(y=df1["Time"], ax=axs[1], color=".8")
 
-    sns.violinplot(x=df1["Time"], inner_kws=dict(box_width=15, whis_width=2, color=".8"),
-                   ax=axs[1])
+    median_cg = df["Time"].median()
+    median_compact = df1["Time"].median()
+
+    axs[0].axhline(median_cg, color='r', linestyle='--', label='Median')
+    axs[0].text(median_cg, axs[0].get_ylim()[1], f'{median_cg}', ha='center', va='top', backgroundcolor='white')
+
+    axs[1].axhline(median_compact, color='r', linestyle='--', label='Median')
+    axs[1].text(median_compact, axs[1].get_ylim()[1], f'{median_compact}', ha='center', va='top', backgroundcolor='white')
+
+    axs[0].set_title("Column Generation")
     axs[1].set_title("Compact Solver")
 
+    plt.legend()
+    plt.show()
+
+
+def medianplots(list_cg, list_compact):
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+
+    df = pd.DataFrame(list_cg, columns=['Time'])
+    df1 = pd.DataFrame(list_compact, columns=['Time'])
+
+    sns.boxplot(x=df["Time"], ax=axs[0])
+    axs[0].set_title("Column Generation")
+
+    sns.boxplot(x=df1["Time"], ax=axs[1])
+    axs[1].set_title("Compact Solver")
+
+    median_cg = df["Time"].median()
+    median_compact = df1["Time"].median()
+
+    axs[0].axvline(median_cg, color='r', linestyle='--', label=f'Median: {median_cg}')
+    axs[0].text(0.5, median_cg, f'{median_cg}', ha='center', va='bottom')
+
+    axs[1].axvline(median_compact, color='r', linestyle='--', label=f'Median: {median_compact}')
+    axs[1].text(0.5, median_compact, f'{median_compact}', ha='center', va='bottom')
+
+    plt.legend()
     plt.show()
 
 def optBoxplot(vals):

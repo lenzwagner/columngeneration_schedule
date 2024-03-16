@@ -465,3 +465,4 @@ pie_chart(optimal_results)
 # Violin Plots
 optBoxplot([value for value in gap_results.values() if value > 1e-8])
 violinplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))
+medianplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))

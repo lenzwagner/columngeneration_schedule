@@ -22,7 +22,7 @@ time_compact = {}
 time_cg = {}
 
 # Start Reps
-for seed in range(100, 121):
+for seed in range(100, 111):
     random.seed(seed)
     def generate_cost(num_days, phys):
         cost = {}
@@ -66,7 +66,7 @@ for seed in range(100, 121):
     # Get Starting Solutions
     problem_start = Problem(data, demand_dict, eps)
     problem_start.buildLinModel()
-    problem_start.model.setParam('TimeLimit', 1)
+    problem_start.model.setParam('TimeLimit', 10)
     problem_start.model.update()
     problem_start.model.optimize()
     start_values = {}
@@ -108,9 +108,17 @@ for seed in range(100, 121):
         # Start time count
         t0 = time.time()
 
+        print("*" * (output_len + 2))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("***** Starting Column Generation *****", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*" * (output_len + 2))
+
         while (modelImprovable) and itr < max_itr:
             # Start
             itr += 1
+            print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
 
             # Solve RMP
             master.current_iteration = itr + 1
@@ -188,6 +196,8 @@ for seed in range(100, 121):
 
     # Capture total time and objval
     total_time_cg = time.time() - t0
+    print("*{:^{output_len}}*".format(f"Total time: {total_time_cg}", output_len=output_len))
+
     final_obj_cg = master.model.objval
 
     gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
@@ -215,3 +225,4 @@ pie_chart(optimal_results)
 # Violin Plots
 optBoxplot([value for value in gap_results.values() if value > 1e-8])
 violinplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))
+

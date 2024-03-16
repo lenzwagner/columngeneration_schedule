@@ -171,6 +171,7 @@ class Problem:
 
     def ModelParams(self):
         self.model.Params.OutputFlag = 1
+        self.model.setParam('ConcurrentMIP', 2)
 
     def solveModel(self):
         self.t1 = time.time()

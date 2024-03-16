@@ -56,6 +56,7 @@ class Problem:
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-2
+            self.model.setParam('ConcurrentMIP', 2)
             self.model.optimize()
             self.model.Params.LogToConsole = 0
             self.model.Params.LogFile = "./log_file_compact.log"

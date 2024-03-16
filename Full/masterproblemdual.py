@@ -143,7 +143,9 @@ class MasterProblem:
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-4
-            self.model.Params.OutputFlag = 0
+            self.model.setParam('ConcurrentMIP', 2)
+            self.model.Params.Method = 2
+            self.model.Params.Crossover = 0
             self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
             self.model.update()
             self.model.optimize()
@@ -167,13 +169,16 @@ class MasterProblem:
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-4
+            self.model.setParam('ConcurrentMIP', 2)
+            self.model.Params.Method = 2
+            self.model.Params.Crossover = 0
             self.model.optimize()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
 
     def solveRelaxModel(self):
         try:
-            self.model.Params.OutputFlag = 0
+            self.model.setParam('TimeLimit', 3600)
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')

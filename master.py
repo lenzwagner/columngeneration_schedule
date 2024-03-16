@@ -54,6 +54,8 @@ class MasterProblem:
         try:
             self.model.Params.OutputFlag = 0
             self.model.Params.QCPDual = 1
+            self.model.setParam('ConcurrentMIP', 2)
+            self.model.Params.MIPGap = 1e-4
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')
             self.model.optimize()

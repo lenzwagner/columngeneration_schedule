@@ -190,10 +190,10 @@ def violinplots(list_cg, list_compact):
     median_cg = df["Time"].median()
     median_compact = df1["Time"].median()
 
-    axs[0].axhline(median_cg, color='r', linestyle='--', label='Median')
+    axs[0].axvline(median_cg, color='r', linestyle='--', label='Median')
     axs[0].text(median_cg, axs[0].get_ylim()[1], f'{median_cg}', ha='center', va='top', backgroundcolor='white')
 
-    axs[1].axhline(median_compact, color='r', linestyle='--', label='Median')
+    axs[1].axvline(median_compact, color='r', linestyle='--', label='Median')
     axs[1].text(median_compact, axs[1].get_ylim()[1], f'{median_compact}', ha='center', va='top', backgroundcolor='white')
 
     axs[0].set_title("Column Generation")

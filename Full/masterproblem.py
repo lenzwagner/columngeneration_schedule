@@ -108,11 +108,11 @@ class MasterProblem:
             if self.model.status == gu.GRB.OPTIMAL:
                 print("*" * (self.output_len + 2))
                 print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=self.output_len))
-                print("*{:^{output_len}}*".format("", output_len=self.output_len))
+                print("*" * (self.output_len + 2))
             else:
                 print("*" * (self.output_len + 2))
                 print("*{:^{output_len}}*".format("***** No optimal solution found *****", output_len=self.output_len))
-                print("*{:^{output_len}}*".format("", output_len=self.output_len))
+                print("*" * (self.output_len + 2))
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
 

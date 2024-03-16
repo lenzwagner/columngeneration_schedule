@@ -35,6 +35,7 @@ demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0
                (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
                (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
 
+random.seed(124)
 def generate_cost(num_days, phys):
     cost = {}
     shifts = [1, 2, 3]
@@ -51,7 +52,7 @@ demand_dict = generate_cost(len(T), len(I))
 
 # Parameter
 time_Limit = 3600
-max_itr = 50
+max_itr = 35
 output_len = 98
 mue = 1e-4
 eps = 0.38
@@ -128,7 +129,7 @@ while True:
         duals_ts = master.getDuals_ts()
 
         # Smoothing
-        alphas = [1, 0.5]
+        alphas = [1, 0.3]
         for key in duals_i:
             smoothed_duals_i[key] = alphas[0] * duals_i[key] + (1 - alphas[0]) * smoothed_duals_i[key]
         for key in duals_ts:

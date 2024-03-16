@@ -22,7 +22,7 @@ time_compact = {}
 time_cg = {}
 
 # Start Reps
-for seed in range(1, 11):
+for seed in range(100, 121):
     random.seed(seed)
     def generate_cost(num_days, phys):
         cost = {}

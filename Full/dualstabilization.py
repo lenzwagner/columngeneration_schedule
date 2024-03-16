@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from masterproblem-dual import *
+from masterproblemdual import *
 import seaborn as sns
 import random
 from subproblem import *
@@ -23,7 +23,7 @@ demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0
                (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
                (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
                (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
-
+random.seed(124)
 def generate_cost(num_days, phys):
     cost = {}
     shifts = [1, 2, 3]

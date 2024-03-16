@@ -25,8 +25,8 @@ class MasterProblem:
 
     def buildModel(self):
         self.generateVariables()
-        self.generateConstraints()
         self.genParam()
+        self.generateConstraints()
         self.model.update()
         self.generateObjective()
         self.model.update()
@@ -50,6 +50,8 @@ class MasterProblem:
                 self.cons_demand[t, s] = self.model.addConstr(
                     gu.quicksum(self.performance_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.rosterinitial) +
                     self.u[t, s] + self.theta_plus[t, s] - self.theta_minus[t, s] >= self.demand[t, s], "demand("+str(t)+","+str(s)+")")
+                self.model.addConstr(self.theta_plus[t, s] <= self.zeta_plus[t, s])
+                self.model.addConstr(self.theta_minus[t, s] <= self.zeta_minus[t, s])
         return self.cons_lmbda, self.cons_demand
 
     def generateObjective(self):
@@ -146,11 +148,11 @@ class MasterProblem:
             if self.model.status == gu.GRB.OPTIMAL:
                 print("*" * (self.output_len + 2))
                 print("*{:^{output_len}}*".format("***** Optimal solution found *****", output_len=self.output_len))
-                print("*{:^{output_len}}*".format("", output_len=self.output_len))
+                print("*" * (self.output_len + 2))
             else:
                 print("*" * (self.output_len + 2))
                 print("*{:^{output_len}}*".format("***** No optimal solution found *****", output_len=self.output_len))
-                print("*{:^{output_len}}*".format("", output_len=self.output_len))
+                print("*" * (self.output_len + 2))
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
 

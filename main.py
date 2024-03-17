@@ -52,7 +52,7 @@ mue = 1e-4
 problem_t0 = time.time()
 problem = Problem(data, demand_dict, gen_alpha(seed))
 problem.buildModel()
-problem.solveModel()
+problem.solveModel(time_Limit)
 
 # Calculate objective function value and store model runtime
 obj_val_problem = round(problem.model.objval, 3)

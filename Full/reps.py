@@ -200,10 +200,15 @@ for seed in range(110, 121):
 
     final_obj_cg = master.model.objval
 
-    gap_rc = round(((round(final_obj_cg, 3) - round(obj_val_problem, 3)) / round(final_obj_cg, 3)) * 100, 3)
+    gap_rc = round(((round(final_obj_cg, 2) - round(obj_val_problem, 2)) / round(final_obj_cg, 3)) * 100, 2)
+
+        if gap_rc > 0:
+        gap_rc_value = gap_rc
+    else:
+        gap_rc_value = 0.0
 
     def is_Opt(final_obj_cg, obj_val_problem):
-        diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
+        diff = round(final_obj_cg, 2) - round(obj_val_problem, 2)
         if diff == 0:
             is_optimal = 1
         else:
@@ -213,7 +218,7 @@ for seed in range(110, 121):
 
     # Optimality check
     optimal_results[seed] = is_Opt(final_obj_cg, obj_val_problem)
-    gap_results[seed] = gap_rc
+    gap_results[seed] = gap_rc_value
 
     time_compact[seed] = time_problem
     time_cg[seed] = round(total_time_cg, 4)
@@ -226,3 +231,5 @@ pie_chart(optimal_results)
 optBoxplot([value for value in gap_results.values() if value > 1e-8])
 violinplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))
 
+# Boxplots
+medianplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))

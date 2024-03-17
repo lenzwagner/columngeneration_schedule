@@ -90,7 +90,6 @@ class MasterProblem:
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-4
-            self.model.Params.Method = 2
             self.model.Params.OutputFlag = 0
             self.model.Params.LogToConsole = 0
             self.model.optimize()

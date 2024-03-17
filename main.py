@@ -52,7 +52,7 @@ mue = 1e-4
 problem_t0 = time.time()
 problem = Problem(data, demand_dict, gen_alpha(seed))
 problem.buildModel()
-problem.solveModel(time_Limit)
+problem.solveModel()
 
 # Calculate objective function value and store model runtime
 obj_val_problem = round(problem.model.objval, 3)
@@ -97,7 +97,7 @@ while True:
 
 
     # Build MP
-    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
+    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values, time_Limit)
     master.buildModel()
     print("*" * (output_len + 2))
     print("*{:^{output_len}}*".format("", output_len=output_len))
@@ -150,12 +150,12 @@ while True:
         modelImprovable = False
         for index in I:
             # Build SP
-            subproblem = Subproblem(duals_i, duals_ts, data, index, 1e6, itr, gen_alpha(seed))
+            subproblem = Subproblem(duals_i, duals_ts, data, index, 1e6, itr, gen_alpha(seed), time_Limit)
             subproblem.buildModel()
 
             # Save time to solve SP
             sub_t0 = time.time()
-            subproblem.solveModel(time_Limit)
+            subproblem.solveModel()
             sub_totaltime = time.time() - sub_t0
             timeHist.append(sub_totaltime)
 
@@ -221,7 +221,7 @@ while True:
 remove_vars(master, I, T, K, last_itr, max_itr)
 
 # Solve Master Problem with integrality restored
-master.finalSolve(time_Limit)
+master.finalSolve()
 
 # Capture total time and objval
 total_time_cg = time.time() - t0

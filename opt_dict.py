@@ -84,12 +84,12 @@ for seed in range(100, 201):
 
 
     # Build & Solve MP
-    master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, last_itr, 88, start_values)
+    master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, last_itr, 88, start_values, time_Limit)
     master.buildModel()
     master.setStartSolution()
     master.File2Log()
     master.updateModel()
-    master.solveRelaxModel(3600)
+    master.solveRelaxModel()
 
     # Get Duals from MP
     duals_i = master.getDuals_i()
@@ -111,7 +111,7 @@ for seed in range(100, 201):
         itr += 1
         # Solve RMP
         master.current_iteration = itr + 1
-        master.solveRelaxModel(3500)
+        master.solveRelaxModel()
         objValHistRMP.append(master.model.objval)
 
         # Get Duals
@@ -121,9 +121,9 @@ for seed in range(100, 201):
         # Solve SPs
         modelImprovable = False
         for index in I_list:
-            subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed))
+            subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed), time_Limit)
             subproblem.buildModel()
-            subproblem.solveModel(time_Limit)
+            subproblem.solveModel()
 
             optx_values = subproblem.getOptX()
             Iter_schedules[f"Nurse_{index}"].append(optx_values)
@@ -146,7 +146,7 @@ for seed in range(100, 201):
 
 
     # Solve MP
-    master.finalSolve(time_Limit)
+    master.finalSolve()
     total_time_cg = time.time() - t0
     final_obj_cg = master.model.objval
 

@@ -2,7 +2,7 @@ from gurobipy import *
 import gurobipy as gu
 
 class MasterProblem:
-    def __init__(self, df, Demand, max_iteration, current_iteration, last, nr, start):
+    def __init__(self, df, Demand, max_iteration, current_iteration, last, nr, start, timeLim):
         self.iteration = current_iteration
         self.max_iteration = max_iteration
         self.nurses = df['I'].dropna().astype(int).unique().tolist()
@@ -20,6 +20,8 @@ class MasterProblem:
         self.cons_lmbda = {}
         self.output_len = nr
         self.start = start
+        self.timeLim = timeLim
+    
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
@@ -54,7 +56,7 @@ class MasterProblem:
         try:
             self.model.Params.OutputFlag = 0
             self.model.Params.QCPDual = 1
-            self.model.Params.TimeLimit = timeLimi
+            self.model.Params.TimeLimit = self.timeLim
             self.model.Params.Method = 2
             self.model.Params.LogToConsole = 0
             self.model.Params.Crossover = 0
@@ -82,10 +84,10 @@ class MasterProblem:
                     if (i, t, s) in self.start:
                         self.model.addLConstr(self.motivation_i[i, t, s, 1] == self.start[i, t, s])
 
-    def solveModel(self, timeLimit):
+    def solveModel(self):
         try:
             self.model.Params.QCPDual = 1
-            self.model.Params.TimeLimit = timeLimit
+            self.model.Params.TimeLimit = self.timeLim
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
@@ -141,9 +143,9 @@ class MasterProblem:
     def printLambdas(self):
         return self.model.getAttr("X", self.lmbda)
 
-    def finalSolve(self, timeLimit):
+    def finalSolve(self):
         try:
-            self.model.Params.TimeLimit = timeLimit
+            self.model.Params.TimeLimit = self.timeLim
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0

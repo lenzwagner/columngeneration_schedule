@@ -135,9 +135,8 @@ class MasterProblem:
         try:
             self.model.Params.OutputFlag = 0
             self.model.Params.MIPGap = 1e-4
-            self.model.Params.Method = 2
             self.model.Params.Crossover = 0
-            self.model.setParam('ConcurrentMIP', 2)
+            self.model.Params.Method = 2
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')

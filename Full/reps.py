@@ -66,7 +66,7 @@ for seed in range(110, 121):
     # Get Starting Solutions
     problem_start = Problem(data, demand_dict, eps)
     problem_start.buildLinModel()
-    problem_start.model.Params.MPIGap = 0.5
+    problem_start.model.Params.MIPGap = 0.5
     problem_start.model.update()
     problem_start.model.optimize()
     start_values = {}
@@ -202,7 +202,7 @@ for seed in range(110, 121):
 
     gap_rc = round(((round(final_obj_cg, 2) - round(obj_val_problem, 2)) / round(final_obj_cg, 3)) * 100, 2)
 
-        if gap_rc > 0:
+    if gap_rc > 0:
         gap_rc_value = gap_rc
     else:
         gap_rc_value = 0.0

@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 from masterproblem import *
 import seaborn as sns
 import random
+from plots import *
 from subproblem import *
+from gcutil import *
 from compactsolver import *
 
 # Set of indices
@@ -30,9 +32,9 @@ Min_WD_i = {a: f for a, f in zip(I, Min_WD_i)}
 Max_WD_i = {a: g for a, g in zip(I, Max_WD_i)}
 
 # Demand Dict
-demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
+demand_dict1 = {(1, 1): 0, (1, 2): 3, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 0, (3, 2): 2, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
                (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
-               (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
+               (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 1, (11, 2): 2, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
                (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
 
 random.seed(124)
@@ -213,67 +215,14 @@ master.finalSolve(time_Limit)
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
 
-
-# Define function
-def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, nr):
-    print("*" * (nr + 2))
-    print("*{:^{nr}}*".format("***** Results *****", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("Total Column Generation iterations: " + str(itr), nr=nr))
-    print("*{:^{nr}}*".format("Total elapsed time: " + str(round((total_time), 4)) + " seconds", nr=nr))
-    print("*{:^{nr}}*".format("Final Column Generation solution: " + str(round(final_obj_cg, 3)), nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("The optimal solution found by compact solver is: " + str(round(obj_val_problem, 3)), nr=nr))
-    print("*{:^{nr}}*".format("The optimal solution found by the Column Generation solver is: " + str(round(final_obj_cg, 3)), nr=nr))
-    gap = round(((round(final_obj_cg, 3)-round(obj_val_problem, 3))/round(final_obj_cg, 1))*100, 3)
-    gap_str = f"{gap}%"
-    if round(final_obj_cg, 3)-round(obj_val_problem, 3) == 0:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
-    else:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
-        print("*{:^{nr}}*".format("Column Generation does not provide the global optimal solution!", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("Solving Times:", nr=nr))
-    print("*{:^{nr}}*".format(f"Time Column Generation: {round(total_time, 4)} seconds", nr=nr))
-    print("*{:^{nr}}*".format(f"Time Compact Solver: {round(time_problem, 4)} seconds", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    if round((total_time), 4) < time_problem:
-        print("*{:^{nr}}*".format(
-            "Column Generation is faster by " + str(round((time_problem - round((total_time), 4)), 3)) + " seconds,", nr=nr))
-        print("*{:^{nr}}*".format(
-            "which is " + str(round((time_problem/ round(total_time, 4)), 3)) + "x times faster.", nr=nr))
-    elif round((total_time), 4) > time_problem:
-        print("*{:^{nr}}*".format(
-            "Compact solver is faster by " + str(round((round((total_time), 4) - time_problem), 3)) + " seconds,", nr=nr))
-        print("*{:^{nr}}*".format(
-            "which is " + str(round((round(total_time, 4)/ time_problem), 3)) + "x times faster.", nr=nr))
-    else:
-        print("*{:^{nr}}*".format("Column Generation and compact solver are equally fast: " + str(time_problem) + " seconds", nr=nr))
-    print("*" * (nr + 2))
-
+# Results
 printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, output_len)
 
-def plot_obj_val(objValHistRMP):
-    sns.set(style='darkgrid')
-    sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o')
-    sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP)
-    plt.xlabel('CG Iterations')
-    plt.xticks(range(0, len(objValHistRMP)))
-    plt.ylabel('Objective function value')
-    title = 'Optimal objective value: ' + str(round(objValHistRMP[-1], 2))
-    plt.title(title)
-    plt.show()
+# Plots
+plot_obj_val(objValHistRMP, 'objval_plot')
+plot_avg_rc(avg_rc_hist, 'rc_plot')
+plot_together(objValHistRMP, avg_rc_hist, 'together_plot')
+optimalityplot(objValHistRMP, gap_rc_hist, last_itr, 'optimality_plot')
+fig = visualize_schedule(problem.get_final_values_dict(), len(T), round(final_obj_cg, 3))
 
-def plot_avg_rc(avg_rc_hist):
-    sns.set(style='darkgrid')
-    sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o')
-    sns.lineplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist)
-    plt.xlabel('CG Iterations')
-    plt.xticks(range(1, len(avg_rc_hist)+1))
-    plt.ylabel('Reduced Cost')
-    title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
-    plt.title(title)
-    plt.show()
-
-plot_obj_val(objValHistRMP)
-plot_avg_rc(avg_rc_hist)
+print(problem.get_final_values_dict())

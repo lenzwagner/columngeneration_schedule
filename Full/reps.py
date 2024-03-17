@@ -66,7 +66,7 @@ for seed in range(110, 121):
     # Get Starting Solutions
     problem_start = Problem(data, demand_dict, eps)
     problem_start.buildLinModel()
-    problem_start.model.setParam('TimeLimit', 10)
+    problem_start.model.Params.MPIGap = 0.5
     problem_start.model.update()
     problem_start.model.optimize()
     start_values = {}

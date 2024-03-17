@@ -2,7 +2,7 @@ from gurobipy import *
 import gurobipy as gu
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, df, i, BigM, iteration, alpha):
+    def __init__(self, duals_i, duals_ts, df, i, BigM, iteration, alpha, timeLim):
         itr = iteration + 1
         self.days = df['T'].dropna().astype(int).unique().tolist()
         self.shifts = df['K'].dropna().astype(int).unique().tolist()
@@ -15,6 +15,7 @@ class Subproblem:
         self.model = gu.Model("Subproblem")
         self.index = i
         self.itr = itr
+        self.timeLim = timeLim
 
     def buildModel(self):
         self.generateVariables()
@@ -62,9 +63,9 @@ class Subproblem:
     def getStatus(self):
         return self.model.status
 
-    def solveModel(self, timeLimit):
+    def solveModel(self):
         try:
-            self.model.Params.TimeLimit = timeLimit
+            self.model.Params.TimeLimit = self.timeLim
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0

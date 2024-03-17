@@ -361,7 +361,7 @@ for seed in range(100, 201):
 
     problem = Problem(DataDF, Demand_Dict, gen_alpha(seed))
     problem.buildModel()
-    problem.solveModel(time_Limit)
+    problem.solveModel()
     obj_val_problem = round(problem.model.objval, 3)
     time_problem = round(problem.getTime(), 4)
     vals_prob = problem.get_final_values()
@@ -379,7 +379,7 @@ for seed in range(100, 201):
     avg_rc_hist = []
 
     # Build & Solve MP
-    master = MasterProblem(DataDF, Demand_Dict, max_itr, itr)
+    master = MasterProblem(DataDF, Demand_Dict, max_itr, itr, time_Limit)
     master.buildModel()
     master.setStartSolution()
     master.File2Log()
@@ -410,9 +410,9 @@ for seed in range(100, 201):
         # Solve SPs
         modelImprovable = False
         for index in I_list:
-            subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed))
+            subproblem = Subproblem(duals_i, duals_ts, DataDF, index, 1e6, itr, gen_alpha(seed), time_Limit)
             subproblem.buildModel()
-            subproblem.solveModel(time_Limit)
+            subproblem.solveModel()
 
             optx_values = subproblem.getOptX()
             Iter_schedules[f"Nurse_{index}"].append(optx_values)
@@ -435,11 +435,11 @@ for seed in range(100, 201):
 
 
     # Solve MP
-    master.finalSolve(time_Limit)
+    master.finalSolve()
     total_time_cg = time.time() - t0
     final_obj_cg = master.model.objval
 
-    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
+    gap_rc = round(((round(master.model.objval, 2) - round(obj_val_problem, 2)) / round(master.model.objval, 2)) * 100, 2)
 
     if gap_rc > 0:
         gap_rc_value = gap_rc
@@ -447,7 +447,7 @@ for seed in range(100, 201):
         gap_rc_value = 0.0
 
     def is_Opt(final_obj_cg, obj_val_problem):
-        diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
+        diff = round(final_obj_cg, 2) - round(obj_val_problem, 2)
         if diff == 0:
             is_optimal = 1
         else:

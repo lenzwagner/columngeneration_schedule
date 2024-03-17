@@ -218,11 +218,11 @@ def medianplots(list_cg, list_compact):
     median_cg = df["Time"].median()
     median_compact = df1["Time"].median()
 
-    axs[0].axvline(median_cg, color='r', linestyle='--', label=f'Median: {median_cg}')
-    axs[0].text(0.5, median_cg, f'{median_cg}', ha='center', va='bottom')
+    axs[0].axvline(median_cg, color='r', linestyle='--', label='Median')
+    axs[0].text(median_cg, axs[0].get_ylim()[1], f'{median_cg}', ha='center', va='top', backgroundcolor='white')
 
-    axs[1].axvline(median_compact, color='r', linestyle='--', label=f'Median: {median_compact}')
-    axs[1].text(0.5, median_compact, f'{median_compact}', ha='center', va='bottom')
+    axs[1].axvline(median_compact, color='r', linestyle='--', label='Median')
+    axs[1].text(median_compact, axs[1].get_ylim()[1], f'{median_compact}', ha='center', va='top', backgroundcolor='white')
 
     plt.legend()
     plt.show()
@@ -242,7 +242,7 @@ def pie_chart(optimal):
     data = pd.DataFrame({'Category': ['Yes', 'No'], 'Count': [ones, zeros]})
 
     plt.figure(figsize=(6, 6))
-    plt.pie(data['Count'], labels=data['Category'], colors=['#008fd5', '#fc4e07'], startangle=90, autopct='%1.1f%%')
+    plt.pie(data['Count'], labels=data['Category'], colors=['#048BA8', '#F18F01'], startangle=90, autopct='%1.1f%%')
 
     plt.ylabel('')
     plt.xlabel('')

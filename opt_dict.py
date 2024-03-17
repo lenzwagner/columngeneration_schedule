@@ -441,6 +441,10 @@ for seed in range(100, 201):
 
     gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
 
+    if gap_rc > 0:
+        gap_rc_value = gap_rc
+    else:
+        gap_rc_value = 0.0
 
     def is_Opt(final_obj_cg, obj_val_problem):
         diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
@@ -453,7 +457,7 @@ for seed in range(100, 201):
 
     # Optimality check
     optimal_results[seed] = is_Opt(final_obj_cg, obj_val_problem)
-    gap_results[seed] = gap_rc
+    gap_results[seed] = gap_rc_value
 
     time_compact[seed] = time_problem
     time_cg[seed] = round(total_time_cg, 2)

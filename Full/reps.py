@@ -200,7 +200,7 @@ for seed in range(110, 121):
 
     final_obj_cg = master.model.objval
 
-    gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)) * 100, 3)
+    gap_rc = round(((round(final_obj_cg, 3) - round(obj_val_problem, 3)) / round(final_obj_cg, 3)) * 100, 3)
 
     def is_Opt(final_obj_cg, obj_val_problem):
         diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)

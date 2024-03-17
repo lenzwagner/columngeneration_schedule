@@ -68,7 +68,7 @@ reached_max_itr = False
 # Get Starting Solutions
 problem_start = Problem(data, demand_dict, gen_alpha(seed))
 problem_start.buildModel()
-problem_start.model.setParam('TimeLimit', 1)
+problem_start.model.Params.MIPGap = 0.5
 problem_start.model.update()
 problem_start.model.optimize()
 start_values = {}

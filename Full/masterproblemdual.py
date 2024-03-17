@@ -138,14 +138,13 @@ class MasterProblem:
 
     def finalSolve(self, timeLimit):
         try:
-            self.model.setParam('TimeLimit', timeLimit)
+            self.model.Params.TimeLimit = timeLimit
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-4
-            self.model.setParam('ConcurrentMIP', 2)
-            self.model.Params.Method = 2
-            self.model.Params.Crossover = 0
+            self.model.Params.OutputFlag = 0
+            self.model.Params.LogToConsole = 0
             self.model.setAttr("vType", self.lmbda, gu.GRB.BINARY)
             self.model.update()
             self.model.optimize()
@@ -162,16 +161,13 @@ class MasterProblem:
 
     def solveModel(self, timeLimit):
         try:
-            self.model.setParam('TimeLimit', timeLimit)
-            self.model.Params.QCPDual = 1
-            self.model.Params.OutputFlag = 0
+            self.model.Params.TimeLimit = timeLimit
             self.model.Params.IntegralityFocus = 1
             self.model.Params.FeasibilityTol = 1e-9
             self.model.Params.BarConvTol = 0.0
             self.model.Params.MIPGap = 1e-4
-            self.model.setParam('ConcurrentMIP', 2)
-            self.model.Params.Method = 2
-            self.model.Params.Crossover = 0
+            self.model.Params.OutputFlag = 0
+            self.model.Params.LogToConsole = 0
             self.model.optimize()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))
@@ -180,6 +176,8 @@ class MasterProblem:
         try:
             self.model.setParam('TimeLimit', 3600)
             self.model.Params.QCPDual = 1
+            self.model.Params.Method = 2
+            self.model.Params.Crossover = 0
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')
             self.model.optimize()

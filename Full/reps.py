@@ -202,7 +202,7 @@ for seed in range(110, 121):
 
     gap_rc = round(((round(final_obj_cg, 2) - round(obj_val_problem, 2)) / round(final_obj_cg, 3)) * 100, 2)
 
-        if gap_rc > 0:
+    if gap_rc > 0:
         gap_rc_value = gap_rc
     else:
         gap_rc_value = 0.0

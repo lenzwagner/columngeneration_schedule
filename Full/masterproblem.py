@@ -80,6 +80,9 @@ class MasterProblem:
                 self.cons_demand[t, s] = newcon
         self.model.update()
 
+    def printLambdas(self):
+        return self.model.getAttr("X", self.lmbda)
+
     def addLambda(self, index, itr):
         self.nurseIndex = index
         self.rosterIndex = itr + 1

@@ -152,6 +152,13 @@ class Subproblem:
             vals_list.append(vals)
         return vals_list
 
+    def getOptPerf(self):
+        vals_opt = self.model.getAttr("X", self.performance)
+        vals_list = []
+        for vals in vals_opt.values():
+            vals_list.append(vals)
+        return vals_list
+
     def getStatus(self):
         return self.model.status
 

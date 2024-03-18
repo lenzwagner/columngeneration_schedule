@@ -32,6 +32,9 @@ class MasterProblem:
         self.generateObjective()
         self.model.update()
 
+    def printLambdas(self):
+        return self.model.getAttr("X", self.lmbda)
+
     def genParam(self):
         self.delta_plus, self.delta_minus = {(t, s): self.initial_delta for t in self.days for s in self.shifts}, {(t, s): self.initial_delta for t in self.days for s in self.shifts}
         self.zeta_plus, self.zeta_minus = {(t, s): self.initial_zeta for t in self.days for s in self.shifts}, {(t, s): self.initial_zeta for t in self.days for s in self.shifts}

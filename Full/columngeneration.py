@@ -3,7 +3,9 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from masterproblem import *
+from plots import *
 import seaborn as sns
+from gcutil import *
 import random
 from subproblem import *
 from compactsolver import *
@@ -52,10 +54,10 @@ demand_dict = generate_cost(len(T), len(I))
 
 # Parameter
 time_Limit = 3600
-max_itr = 35
+max_itr = 10
 output_len = 98
 mue = 1e-4
-eps = 0.38
+eps = 0.09
 
 # **** Compact Solver ****
 problem_t0 = time.time()
@@ -78,7 +80,11 @@ reached_max_itr = False
 # Get Starting Solutions
 problem_start = Problem(data, demand_dict, eps)
 problem_start.buildLinModel()
-problem_start.model.Params.MIPGap = 0.5
+problem_start.model.Params.MIPFocus = 1
+problem_start.model.Params.Heuristics = 1
+problem_start.model.Params.NoRelHeurTime = 100
+problem_start.model.Params.RINS = 10
+problem_start.model.Params.MIPGap = 0.7
 problem_start.model.update()
 problem_start.model.optimize()
 start_values = {}
@@ -86,6 +92,11 @@ for i in I:
     for t in T:
         for s in K:
             start_values[(i, t, s)] = problem_start.perf[i ,t, s].x
+
+start_values_p = {}
+for i in I:
+    for t in T:
+        start_values_p[(i, t)] = problem_start.p[i ,t].x
 
 while True:
     # Initialize iterations
@@ -101,9 +112,17 @@ while True:
     avg_sp_time = []
     gap_rc_hist = []
 
-    Iter_schedules = {}
+    X_schedules = {}
     for index in I:
-        Iter_schedules[f"Physician_{index}"] = []
+        X_schedules[f"Physician_{index}"] = []
+
+    Perf_schedules = {}
+    for index in I:
+        Perf_schedules[f"Physician_{index}"] = []
+
+    for i in I:
+        list_values = list(start_values_p.values())
+        Perf_schedules[f"Physician_{i}"].append(list_values)
 
     master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
     master.buildModel()
@@ -155,7 +174,9 @@ while True:
 
             # Get optimal values
             optx_values = subproblem.getOptX()
-            Iter_schedules[f"Physician_{index}"].append(optx_values)
+            X_schedules[f"Physician_{index}"].append(optx_values)
+            opt_values = subproblem.getOptPerf()
+            Perf_schedules[f"Physician_{index}"].append(opt_values)
 
             # Check if SP is solvable
             status = subproblem.getStatus()
@@ -277,3 +298,9 @@ def plot_avg_rc(avg_rc_hist):
 
 plot_obj_val(objValHistRMP)
 plot_avg_rc(avg_rc_hist)
+
+print(start_values)
+print(Perf_schedules)
+print(master.printLambdas())
+
+print(get_physician_perf_schedules(X_schedules, master.printLambdas(),I))

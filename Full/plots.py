@@ -115,7 +115,7 @@ def performancePlot(p_list, days):
 
     palette = sns.color_palette("rocket", phys_nr)
 
-    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', marker='o', palette=palette)
+    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', styles='Phys', markers=True, dashes=False, alpha=0.8, palette=palette)
     plt.xlabel('Day')
     plt.ylabel('Motivation')
     plt.title('Performance over Time')

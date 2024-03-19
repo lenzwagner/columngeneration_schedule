@@ -37,6 +37,8 @@ def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, n
     else:
         print("*{:^{nr}}*".format("Column Generation and compact solver are equally fast: " + str(time_problem) + " seconds", nr=nr))
     print("*" * (nr + 2))
+    return gap
+
 
 # **** Compare Roster ****
 def ListComp(list1, list2, num):

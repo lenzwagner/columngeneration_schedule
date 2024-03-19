@@ -91,31 +91,7 @@ def performancePlot(p_list, days):
 
     palette = sns.color_palette("rocket", phys_nr)
 
-    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', marker='o', palette=palette)
-    plt.xlabel('Day')
-    plt.ylabel('Performance')
-    plt.title('Performance over Time')
-    plt.legend(title='Phys')
-
-    plt.show()
-
-def performancePlot(p_list, days):
-    sns.set(style='darkgrid')
-
-    phys_nr = len(p_list) // days
-
-    phys_list = [p_list[i * days:(i + 1) * days] for i in range(phys_nr)]
-
-    data = {'Day': list(range(1, days + 1))}
-    for idx, phys in enumerate(phys_list):
-        data[f'Phys {idx + 1}'] = phys
-
-    df = pd.DataFrame(data)
-    df_melted = df.melt('Day', var_name='Phys', value_name='Performance')
-
-    palette = sns.color_palette("rocket", phys_nr)
-
-    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', styles='Phys', markers=True, dashes=False, alpha=0.8, palette=palette)
+    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True, dashes=False, alpha=0.8, palette=palette)
     plt.xlabel('Day')
     plt.ylabel('Motivation')
     plt.title('Performance over Time')

@@ -144,6 +144,7 @@ class MasterProblem:
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')
+                v.setAttr('lb', 0.0)
             self.model.optimize()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))

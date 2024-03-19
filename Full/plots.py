@@ -74,3 +74,71 @@ def medianplots(list_cg, list_compact):
 
     plt.legend()
     plt.show()
+
+def performancePlot(p_list, days):
+    sns.set(style='darkgrid')
+
+    phys_nr = len(p_list) // days
+
+    phys_list = [p_list[i * days:(i + 1) * days] for i in range(phys_nr)]
+
+    data = {'Day': list(range(1, days + 1))}
+    for idx, phys in enumerate(phys_list):
+        data[f'Phys {idx + 1}'] = phys
+
+    df = pd.DataFrame(data)
+    df_melted = df.melt('Day', var_name='Phys', value_name='Performance')
+
+    palette = sns.color_palette("rocket", phys_nr)
+    plt.xticks(range(1, days + 1))
+
+    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True, dashes=False, alpha=0.8, palette=palette)
+    plt.xlabel('Day')
+    plt.ylabel('Motivation')
+    plt.title('Performance over Time')
+    plt.legend(title='Phys')
+
+    plt.show()
+
+
+def plot_obj_val(objValHistRMP, name):
+    file = str(name)
+    file_name = f'./images/' + file + '.png'
+
+    sns.set(style='darkgrid')
+    sns.scatterplot(x=list(range(len(objValHistRMP[:-1]))), y=objValHistRMP[:-1], marker='o', color='#3c4cad',
+                    label='Objective Value')
+    sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, color='#3c4cad')
+    sns.scatterplot(x=[len(objValHistRMP) - 1], y=[objValHistRMP[-1]], color='#f9c449', s=100, label='Last Point')
+
+    plt.xlabel('Iterations')
+    plt.xticks(range(0, len(objValHistRMP)))
+    plt.ylabel('Objective function value')
+    title = 'Optimal integer objective value: ' + str(round(objValHistRMP[-1], 2))
+    plt.title(title)
+
+    x_ticks_labels = list(range(len(objValHistRMP) - 1)) + ["Int. Solve"]
+    plt.xticks(ticks=list(range(len(objValHistRMP))), labels=x_ticks_labels)
+
+    h, l = plt.gca().get_legend_handles_labels()
+    plt.legend(h[:2], l[:2] + ['Last Point'], loc='best', handletextpad=0.1, handlelength=1, fontsize='medium',
+               title='Legend')
+
+    plt.savefig(file_name, format='png')
+    plt.show()
+
+def plot_avg_rc(avg_rc_hist, name):
+    file = str(name)
+    file_name = f'./images/' + file + '.png'
+
+    sns.set(style='darkgrid')
+    sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o', color='#3c4cad')
+    sns.lineplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, color='#3c4cad')
+    plt.xlabel('Iterations')
+    plt.xticks(range(1, len(avg_rc_hist)+1))
+    plt.ylabel('Reduced Cost')
+    title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
+    plt.title(title)
+
+    plt.savefig(file_name, format='png')
+    plt.show()

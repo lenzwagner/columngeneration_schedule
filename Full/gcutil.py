@@ -1,3 +1,7 @@
+from itertools import chain
+import random
+
+# **** Print Results Table ****
 def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, nr):
     print("*" * (nr + 2))
     print("*{:^{nr}}*".format("***** Results *****", nr=nr))
@@ -8,7 +12,7 @@ def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, n
     print("*{:^{nr}}*".format("", nr=nr))
     print("*{:^{nr}}*".format("The optimal solution found by compact solver is: " + str(round(obj_val_problem, 3)), nr=nr))
     print("*{:^{nr}}*".format("The optimal solution found by the Column Generation solver is: " + str(round(final_obj_cg, 3)), nr=nr))
-    gap = round(((round(final_obj_cg, 3)-round(obj_val_problem, 3))/round(final_obj_cg, 1))*100, 3)
+    gap = round(((round(final_obj_cg, 3)-round(obj_val_problem, 3))/round(final_obj_cg, 3))*100, 3)
     gap_str = f"{gap}%"
     if round(final_obj_cg, 3)-round(obj_val_problem, 3) == 0:
         print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
@@ -22,14 +26,172 @@ def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, n
     print("*{:^{nr}}*".format("", nr=nr))
     if round((total_time), 4) < time_problem:
         print("*{:^{nr}}*".format(
-            "Column Generation is faster by " + str(round((time_problem - round((total_time), 4)), 3)) + " seconds,", nr=nr))
+            "Column Generation is faster by " + str(round((time_problem - round((total_time), 4)), 4)) + " seconds,", nr=nr))
         print("*{:^{nr}}*".format(
             "which is " + str(round((time_problem/ round(total_time, 4)), 3)) + "x times faster.", nr=nr))
     elif round((total_time), 4) > time_problem:
         print("*{:^{nr}}*".format(
-            "Compact solver is faster by " + str(round((round((total_time), 4) - time_problem), 3)) + " seconds,", nr=nr))
+            "Compact solver is faster by " + str(round((round((total_time), 4) - time_problem), 4)) + " seconds,", nr=nr))
         print("*{:^{nr}}*".format(
-            "which is " + str(round((round(total_time, 4)/ time_problem), 3)) + "x times faster.", nr=nr))
+            "which is " + str(round((round(total_time, 4)/ time_problem), 4)) + "x times faster.", nr=nr))
     else:
         print("*{:^{nr}}*".format("Column Generation and compact solver are equally fast: " + str(time_problem) + " seconds", nr=nr))
     print("*" * (nr + 2))
+    return gap
+
+
+# **** Compare Roster ****
+def ListComp(list1, list2, num):
+    if list1 == list2:
+        print("*" * (num + 2))
+        print("*{:^{num}}*".format(f"***** Roster Check *****", num = num))
+        print("*{:^{num}}*".format(f"Roster are the same!", num = num))
+        print("*" * (num + 2))
+    else:
+        print("*" * (num + 2))
+        print("*{:^{num}}*".format(f"***** Roster Check *****", num = num))
+        print("*{:^{num}}*".format(f"Roster are not the same!", num = num))
+        print("*" * (num + 2))
+
+# **** Get x-values ****
+def get_physician_schedules(Iter_schedules, lambdas, I):
+    physician_schedules = []
+    flat_physician_schedules = []
+
+    for i in I:
+        physician_schedule = []
+        for r, schedule in enumerate(Iter_schedules[f"Physician_{i}"]):
+            if (i, r + 2) in lambdas and lambdas[(i, r + 2)] == 1:
+                physician_schedule.append(schedule)
+        physician_schedules.append(physician_schedule)
+        flat_physician_schedules.extend(physician_schedule)
+
+    flat_x = list(chain(*flat_physician_schedules))
+    return flat_x
+
+# **** Get perf-values ****
+def get_physician_perf_schedules(Iter_perf_schedules, lambdas, I):
+    physician_schedules = []
+    flat_physician_schedules = []
+
+    for i in I:
+        physician_schedule = []
+        for r, schedule in enumerate(Iter_perf_schedules[f"Physician_{i}"]):
+            if (i, r + 1) in lambdas and lambdas[(i, r + 1)] == 1:
+                physician_schedule.append(schedule)
+        physician_schedules.append(physician_schedule)
+        flat_physician_schedules.extend(physician_schedule)
+
+    flat_perf = list(chain(*flat_physician_schedules))
+    return flat_perf
+
+
+def get_nurse_schedules(Iter_schedules, lambdas, I_list):
+    nurse_schedules = []
+    flat_nurse_schedules = []
+
+    for i in I_list:
+        nurse_schedule = []
+        for r, schedule in enumerate(Iter_schedules[f"Physician_{i}"]):
+            if (i, r + 1) in lambdas and lambdas[(i, r + 1)] == 1:
+                nurse_schedule.append(schedule)
+        nurse_schedules.append(nurse_schedule)
+        flat_nurse_schedules.extend(nurse_schedule)
+
+    flat = list(chain(*flat_nurse_schedules))
+    return flat
+
+# **** List comparison ****
+def list_diff_sum(list1, list2):
+    result = []
+
+    for i in range(len(list1)):
+        diff = list1[i] - list2[i]
+        if diff == 0:
+            result.append(0)
+        else:
+            result.append(1)
+
+    return result
+
+# **** Optimality Check ****
+def is_Opt(seed, final_obj_cg, obj_val_problem, nr):
+    is_optimal = {}
+    diff = round(final_obj_cg, 3) - round(obj_val_problem, 3)
+
+    if diff == 0:
+        is_optimal[(seed)] = 1
+    else:
+        is_optimal[(seed)] = 0
+
+    print("*" * (nr + 2))
+    print("*{:^{nr}}*".format("Is optimal?", nr=nr))
+    print("*{:^{nr}}*".format("1: Yes ", nr=nr))
+    print("*{:^{nr}}*".format("0: No", nr=nr))
+    print("*{:^{nr}}*".format("", nr=nr))
+    print("*{:^{nr}}*".format(f" {is_optimal}", nr=nr))
+    print("*" * (nr + 2))
+
+    return is_optimal
+
+# **** Remove unnecessary variables ****
+def remove_vars(master, I_list, T_list, K_list, last_itr, max_itr):
+    for i in I_list:
+        for t in T_list:
+            for s in K_list:
+                for r in range(last_itr + 1, max_itr + 2):
+                    var_name = f"motivation_i[{i},{t},{s},{r}]"
+                    var = master.model.getVarByName(var_name)
+                    master.model.remove(var)
+                    master.model.update()
+
+def create_demand_dict(num_days, total_demand):
+    demand_dict = {}
+
+    for day in range(1, num_days + 1):
+        remaining_demand = total_demand
+        shifts = [0, 0, 0]
+
+        while remaining_demand > 0:
+            shift_idx = random.randint(0, 2)
+            shift_demand = min(remaining_demand, random.randint(0, remaining_demand))
+            shifts[shift_idx] += shift_demand
+            remaining_demand -= shift_demand
+
+        for i in range(3):
+            shifts[i] = round(shifts[i])
+            demand_dict[(day, i + 1)] = shifts[i]
+
+    return demand_dict
+
+# **** Generate random pattern ****
+def generate_cost(num_days, phys, K):
+    cost = {}
+    shifts = K
+    for day in range(1, num_days + 1):
+        num_costs = phys
+        for shift in shifts[:-1]:
+            shift_cost = random.randrange(0, num_costs)
+            cost[(day, shift)] = shift_cost
+            num_costs -= shift_cost
+        cost[(day, shifts[-1])] = num_costs
+    return cost
+
+
+def plotPerformanceList(dicts, dict_phys, I, max_itr):
+    final_list = []
+
+    for i in I:
+        r_selected = None
+        for r in range(1, max_itr + 2):
+
+            if dicts.get((i, r)) == 1.0:
+                r_selected = r - 1
+                break
+
+        if r_selected is not None:
+            person_key = f'Physician_{i}'
+            dict_selected = dict_phys[person_key][r_selected]
+            final_list.extend(list(dict_selected.values()))
+
+    return final_list

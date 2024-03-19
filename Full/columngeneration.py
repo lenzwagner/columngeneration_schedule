@@ -1,9 +1,12 @@
+
 import pandas as pd
 import numpy as np
 import time
 import matplotlib.pyplot as plt
 from masterproblem import *
+from plots import *
 import seaborn as sns
+from gcutil import *
 import random
 from subproblem import *
 from compactsolver import *
@@ -52,10 +55,10 @@ demand_dict = generate_cost(len(T), len(I))
 
 # Parameter
 time_Limit = 3600
-max_itr = 35
+max_itr = 20
 output_len = 98
 mue = 1e-4
-eps = 0.38
+eps = 0.09
 
 # **** Compact Solver ****
 problem_t0 = time.time()
@@ -78,7 +81,11 @@ reached_max_itr = False
 # Get Starting Solutions
 problem_start = Problem(data, demand_dict, eps)
 problem_start.buildLinModel()
-problem_start.model.Params.MIPGap = 0.5
+problem_start.model.Params.MIPFocus = 1
+problem_start.model.Params.Heuristics = 1
+problem_start.model.Params.NoRelHeurTime = 100
+problem_start.model.Params.RINS = 10
+problem_start.model.Params.MIPGap = 0.7
 problem_start.model.update()
 problem_start.model.optimize()
 start_values = {}
@@ -86,6 +93,11 @@ for i in I:
     for t in T:
         for s in K:
             start_values[(i, t, s)] = problem_start.perf[i ,t, s].x
+
+start_values_p = {}
+for i in I:
+    for t in T:
+        start_values_p[(i, t)] = problem_start.p[i ,t].x
 
 while True:
     # Initialize iterations
@@ -101,9 +113,18 @@ while True:
     avg_sp_time = []
     gap_rc_hist = []
 
-    Iter_schedules = {}
+    X_schedules = {}
     for index in I:
-        Iter_schedules[f"Physician_{index}"] = []
+        X_schedules[f"Physician_{index}"] = []
+
+    start_values_dict = {}
+    for i in I:
+        start_values_dict[f"Physician_{i}"] = {(i, t): start_values_p[(i, t)] for t in T}
+
+    Perf_schedules = {}
+    for index in I:
+        Perf_schedules[f"Physician_{index}"] = [start_values_dict[f"Physician_{index}"]]
+
 
     master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
     master.buildModel()
@@ -135,6 +156,8 @@ while True:
         # Get Duals
         duals_i = master.getDuals_i()
         duals_ts = master.getDuals_ts()
+        print(f"DualsI: {duals_i}")
+        print(f"DualsTs: {duals_ts}")
 
         # Save current optimality gap
         gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
@@ -155,7 +178,9 @@ while True:
 
             # Get optimal values
             optx_values = subproblem.getOptX()
-            Iter_schedules[f"Physician_{index}"].append(optx_values)
+            X_schedules[f"Physician_{index}"].append(optx_values)
+            optp_values = subproblem.getOptPerf()
+            Perf_schedules[f"Physician_{index}"].append(optp_values)
 
             # Check if SP is solvable
             status = subproblem.getStatus()
@@ -208,72 +233,17 @@ while True:
 
 # Solve Master Problem with integrality restored
 master.finalSolve(time_Limit)
+objValHistRMP.append(master.model.objval)
 
 # Capture total time and objval
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
 
-
-# Define function
-def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, nr):
-    print("*" * (nr + 2))
-    print("*{:^{nr}}*".format("***** Results *****", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("Total Column Generation iterations: " + str(itr), nr=nr))
-    print("*{:^{nr}}*".format("Total elapsed time: " + str(round((total_time), 4)) + " seconds", nr=nr))
-    print("*{:^{nr}}*".format("Final Column Generation solution: " + str(round(final_obj_cg, 3)), nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("The optimal solution found by compact solver is: " + str(round(obj_val_problem, 3)), nr=nr))
-    print("*{:^{nr}}*".format("The optimal solution found by the Column Generation solver is: " + str(round(final_obj_cg, 3)), nr=nr))
-    gap = round(((round(final_obj_cg, 3)-round(obj_val_problem, 3))/round(final_obj_cg, 1))*100, 3)
-    gap_str = f"{gap}%"
-    if round(final_obj_cg, 3)-round(obj_val_problem, 3) == 0:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
-    else:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
-        print("*{:^{nr}}*".format("Column Generation does not provide the global optimal solution!", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("Solving Times:", nr=nr))
-    print("*{:^{nr}}*".format(f"Time Column Generation: {round(total_time, 4)} seconds", nr=nr))
-    print("*{:^{nr}}*".format(f"Time Compact Solver: {round(time_problem, 4)} seconds", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    if round((total_time), 4) < time_problem:
-        print("*{:^{nr}}*".format(
-            "Column Generation is faster by " + str(round((time_problem - round((total_time), 4)), 3)) + " seconds,", nr=nr))
-        print("*{:^{nr}}*".format(
-            "which is " + str(round((time_problem/ round(total_time, 4)), 3)) + "x times faster.", nr=nr))
-    elif round((total_time), 4) > time_problem:
-        print("*{:^{nr}}*".format(
-            "Compact solver is faster by " + str(round((round((total_time), 4) - time_problem), 3)) + " seconds,", nr=nr))
-        print("*{:^{nr}}*".format(
-            "which is " + str(round((round(total_time, 4)/ time_problem), 3)) + "x times faster.", nr=nr))
-    else:
-        print("*{:^{nr}}*".format("Column Generation and compact solver are equally fast: " + str(time_problem) + " seconds", nr=nr))
-    print("*" * (nr + 2))
-
+# Print Results
 printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, output_len)
 
-def plot_obj_val(objValHistRMP):
-    sns.set(style='darkgrid')
-    sns.scatterplot(x=list(range(len(objValHistRMP))), y=objValHistRMP, marker='o')
-    sns.lineplot(x=list(range(len(objValHistRMP))), y=objValHistRMP)
-    plt.xlabel('CG Iterations')
-    plt.xticks(range(0, len(objValHistRMP)))
-    plt.ylabel('Objective function value')
-    title = 'Optimal objective value: ' + str(round(objValHistRMP[-1], 2))
-    plt.title(title)
-    plt.show()
-
-def plot_avg_rc(avg_rc_hist):
-    sns.set(style='darkgrid')
-    sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o')
-    sns.lineplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist)
-    plt.xlabel('CG Iterations')
-    plt.xticks(range(1, len(avg_rc_hist)+1))
-    plt.ylabel('Reduced Cost')
-    title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
-    plt.title(title)
-    plt.show()
-
-plot_obj_val(objValHistRMP)
-plot_avg_rc(avg_rc_hist)
+# Plots
+plot_obj_val(objValHistRMP, 'obj_val_plot')
+plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
+print(Perf_schedules)
+performancePlot(plotPerformanceList(master.printLambdas(), Perf_schedules, I ,max_itr), len(T))

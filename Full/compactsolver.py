@@ -184,6 +184,3 @@ class Problem:
         liste = list(dict.values())
         final = [0.0 if x == -0.0 else x for x in liste]
         return final
-
-    def get_final_values_dict(self):
-        return self.model.getAttr("X", self.x)

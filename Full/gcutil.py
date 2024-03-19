@@ -174,3 +174,22 @@ def generate_cost(num_days, phys, K):
             num_costs -= shift_cost
         cost[(day, shifts[-1])] = num_costs
     return cost
+
+
+def plotPerformanceList(dicts, dict_phys, I, max_itr):
+    final_list = []
+
+    for i in I:
+        r_selected = None
+        for r in range(1, max_itr + 1):
+
+            if dicts.get((i, r)) == 1.0:
+                r_selected = r - 1
+                break
+
+        if r_selected is not None:
+            person_key = f'Physician_{i}'
+            dict_selected = dict_phys[person_key][r_selected]
+            final_list.extend(list(dict_selected.values()))
+
+    return final_list

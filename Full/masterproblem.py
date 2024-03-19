@@ -80,6 +80,9 @@ class MasterProblem:
                 self.cons_demand[t, s] = newcon
         self.model.update()
 
+    def printLambdas(self):
+        return self.model.getAttr("X", self.lmbda)
+
     def addLambda(self, index, itr):
         self.nurseIndex = index
         self.rosterIndex = itr + 1
@@ -140,6 +143,7 @@ class MasterProblem:
             self.model.Params.QCPDual = 1
             for v in self.model.getVars():
                 v.setAttr('vtype', 'C')
+                v.setAttr('lb', 0.0)
             self.model.optimize()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))

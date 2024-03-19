@@ -78,6 +78,10 @@ reached_max_itr = False
 # Get Starting Solutions
 problem_start = Problem(data, demand_dict, eps)
 problem_start.buildLinModel()
+problem_start.model.Params.MIPFocus = 1
+problem_start.model.Params.Heuristics = 1
+problem_start.model.Params.NoRelHeurTime = 100
+problem_start.model.Params.RINS = 10
 problem_start.model.Params.MIPGap = 0.5
 problem_start.model.update()
 problem_start.model.optimize()
@@ -141,7 +145,7 @@ while True:
         duals_ts = master.getDuals_ts()
 
         # Smoothing
-        alphas = [1, 0.3]
+        alphas = [1, 0.8]
         for key in duals_i:
             smoothed_duals_i[key] = alphas[0] * duals_i[key] + (1 - alphas[0]) * smoothed_duals_i[key]
         for key in duals_ts:

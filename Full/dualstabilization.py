@@ -67,6 +67,10 @@ reached_max_itr = False
 # Get Starting Solutions
 problem_start = Problem(data, demand_dict, eps)
 problem_start.buildLinModel()
+problem_start.model.Params.MIPFocus = 1
+problem_start.model.Params.Heuristics = 1
+problem_start.model.Params.NoRelHeurTime = 100
+problem_start.model.Params.RINS = 10
 problem_start.model.Params.MIPGap = 0.5
 problem_start.model.update()
 problem_start.model.optimize()

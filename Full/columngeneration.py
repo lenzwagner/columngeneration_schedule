@@ -247,3 +247,7 @@ plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
 print(Perf_schedules)
 performancePlot(plotPerformanceList(master.printLambdas(), Perf_schedules, I ,max_itr), len(T))
+
+
+dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), Perf_schedules, I ,max_itr), len(I), len(T), len(K))
+print(dicts)

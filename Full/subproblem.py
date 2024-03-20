@@ -152,9 +152,11 @@ class Subproblem:
             vals_list.append(vals)
         return vals_list
 
-    def getOptPerf(self):
+    def getOptP(self):
         return self.model.getAttr("X", self.p)
 
+    def getOptPerf(self):
+        return self.model.getAttr("X", self.performance)
     def getStatus(self):
         return self.model.status
 

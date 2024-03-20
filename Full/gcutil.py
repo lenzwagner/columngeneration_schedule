@@ -195,3 +195,19 @@ def plotPerformanceList(dicts, dict_phys, I, max_itr):
             final_list.extend(list(dict_selected.values()))
 
     return final_list
+
+def create_perf_dict(lst, index, days, shift):
+    sublist_length = len(lst) // index
+    sublists = [lst[i * sublist_length:(i + 1) * sublist_length] for i in range(index)]
+    result_dict = {}
+
+    for i, sublist in enumerate(sublists):
+        for d in range(1, days + 1):
+            for s in range(1, shift + 1):
+                index_key = (i + 1, d, s, 1)
+
+                value = sublist[(d - 1) * shift + (s - 1)]
+
+                result_dict[index_key] = value
+
+    return result_dict

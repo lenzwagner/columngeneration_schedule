@@ -88,16 +88,16 @@ problem_start.model.Params.RINS = 10
 problem_start.model.Params.MIPGap = 0.7
 problem_start.model.update()
 problem_start.model.optimize()
-start_values = {}
+start_values_perf = {}
 for i in I:
     for t in T:
         for s in K:
-            start_values[(i, t, s)] = problem_start.perf[i ,t, s].x
+            start_values_perf[(i, t, s)] = problem_start.perf[i, t, s].x
 
 start_values_p = {}
 for i in I:
     for t in T:
-        start_values_p[(i, t)] = problem_start.p[i ,t].x
+        start_values_p[(i, t)] = problem_start.p[i, t].x
 
 while True:
     # Initialize iterations
@@ -117,16 +117,25 @@ while True:
     for index in I:
         X_schedules[f"Physician_{index}"] = []
 
-    start_values_dict = {}
+    start_values_perf_dict = {}
     for i in I:
-        start_values_dict[f"Physician_{i}"] = {(i, t): start_values_p[(i, t)] for t in T}
+        start_values_perf_dict[f"Physician_{i}"] = {(i, t): start_values_p[(i, t)] for t in T}
 
     Perf_schedules = {}
     for index in I:
-        Perf_schedules[f"Physician_{index}"] = [start_values_dict[f"Physician_{index}"]]
+        Perf_schedules[f"Physician_{index}"] = [start_values_perf_dict[f"Physician_{index}"]]
 
 
-    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
+    start_values_p_dict = {}
+    for i in I:
+        start_values_p_dict[f"Physician_{i}"] = {(i, t): start_values_p[(i, t)] for t in T}
+
+    P_schedules = {}
+    for index in I:
+        P_schedules[f"Physician_{index}"] = [start_values_p_dict[f"Physician_{index}"]]
+
+
+    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values_perf)
     master.buildModel()
     print("*" * (output_len + 2))
     print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
@@ -179,8 +188,10 @@ while True:
             # Get optimal values
             optx_values = subproblem.getOptX()
             X_schedules[f"Physician_{index}"].append(optx_values)
-            optp_values = subproblem.getOptPerf()
-            Perf_schedules[f"Physician_{index}"].append(optp_values)
+            optPerf_values = subproblem.getOptPerf()
+            Perf_schedules[f"Physician_{index}"].append(optPerf_values)
+            optP_values = subproblem.getOptP()
+            P_schedules[f"Physician_{index}"].append(optP_values)
 
             # Check if SP is solvable
             status = subproblem.getStatus()
@@ -246,7 +257,7 @@ printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, ou
 plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
 print(Perf_schedules)
-performancePlot(plotPerformanceList(master.printLambdas(), Perf_schedules, I ,max_itr), len(T))
+performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T))
 
 
 dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), Perf_schedules, I ,max_itr), len(I), len(T), len(K))

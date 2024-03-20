@@ -204,7 +204,7 @@ def create_perf_dict(lst, index, days, shift):
     for i, sublist in enumerate(sublists):
         for d in range(1, days + 1):
             for s in range(1, shift + 1):
-                index_key = (i + 1, d, s, 1)
+                index_key = (i + 1, d, s)
 
                 value = sublist[(d - 1) * shift + (s - 1)]
 

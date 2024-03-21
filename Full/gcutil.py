@@ -10,7 +10,7 @@ def printResults(itr, total_time, time_problem, nr, optimal_ip, optimal_lp):
     print("*{:^{nr}}*".format("Total elapsed time: " + str(round((total_time), 4)) + " seconds", nr=nr))
     print("*{:^{nr}}*".format("Final Integer Column Generation solution: " + str(round(optimal_ip, 4)), nr=nr))
     print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("The LP Relaxation (Lower Bound) solver is: " + str(round(optimal_lp, 4)), nr=nr))
+    print("*{:^{nr}}*".format("The LP Relaxation (Lower Bound) is: " + str(round(optimal_lp, 4)), nr=nr))
     gap = round((((optimal_ip-optimal_lp) / optimal_lp) * 100),3)
     gap_str = f"{gap}%"
     if gap == 0:

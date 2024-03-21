@@ -146,11 +146,7 @@ class Subproblem:
         return self.model.getAttr("X", self.performance)
 
     def getOptX(self):
-        vals_opt = self.model.getAttr("X", self.x)
-        vals_list = []
-        for vals in vals_opt.values():
-            vals_list.append(vals)
-        return vals_list
+        return self.model.getAttr("X", self.x)
 
     def getOptP(self):
         return self.model.getAttr("X", self.p)

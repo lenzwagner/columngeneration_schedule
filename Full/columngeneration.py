@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 import time
@@ -73,6 +72,14 @@ vals_prob = problem.get_final_values()
 print(obj_val_problem)
 
 
+
+dct = {(1, 1, 1): 0.0, (1, 1, 2): 0.0, (1, 1, 3): 0.0, (1, 2, 1): 0.0, (1, 2, 2): 0.0, (1, 2, 3): 0.0, (1, 3, 1): 1.0, (1, 3, 2): 0.0, (1, 3, 3): 0.0, (1, 4, 1): 1.0, (1, 4, 2): 0.0, (1, 4, 3): 0.0, (1, 5, 1): 1.0, (1, 5, 2): 0.0, (1, 5, 3): 0.0, (1, 6, 1): 1.0, (1, 6, 2): 0.0, (1, 6, 3): 0.0, (1, 7, 1): 1.0, (1, 7, 2): 0.0, (1, 7, 3): 0.0, (1, 8, 1): 0.0, (1, 8, 2): 0.0, (1, 8, 3): 0.0, (1, 9, 1): 0.0, (1, 9, 2): 0.0, (1, 9, 3): 0.0, (1, 10, 1): 1.0, (1, 10, 2): 0.0, (1, 10, 3): 0.0, (1, 11, 1): 1.0, (1, 11, 2): 0.0, (1, 11, 3): 0.0, (1, 12, 1): 1.0, (1, 12, 2): 0.0, (1, 12, 3): 0.0, (1, 13, 1): 1.0, (1, 13, 2): 0.0, (1, 13, 3): 0.0, (1, 14, 1): 1.0, (1, 14, 2): 0.0, (1, 14, 3): 0.0, (2, 1, 1): 0.0, (2, 1, 2): 0.0, (2, 1, 3): 1.0, (2, 2, 1): 0.0, (2, 2, 2): 0.0, (2, 2, 3): 1.0, (2, 3, 1): 0.0, (2, 3, 2): 0.0, (2, 3, 3): 1.0, (2, 4, 1): 0.0, (2, 4, 2): 0.0, (2, 4, 3): 1.0, (2, 5, 1): 0.0, (2, 5, 2): 0.0, (2, 5, 3): 1.0, (2, 6, 1): 0.0, (2, 6, 2): 0.0, (2, 6, 3): 0.0, (2, 7, 1): 0.0, (2, 7, 2): 0.0, (2, 7, 3): 0.0, (2, 8, 1): 0.0, (2, 8, 2): 0.0, (2, 8, 3): 1.0, (2, 9, 1): 0.0, (2, 9, 2): 0.0, (2, 9, 3): 1.0, (2, 10, 1): 0.0, (2, 10, 2): 0.0, (2, 10, 3): 1.0, (2, 11, 1): 0.0, (2, 11, 2): 0.0, (2, 11, 3): 1.0, (2, 12, 1): 0.0, (2, 12, 2): 0.0, (2, 12, 3): 1.0, (2, 13, 1): 0.0, (2, 13, 2): 0.0, (2, 13, 3): 0.0, (2, 14, 1): 0.0, (2, 14, 2): 0.0, (2, 14, 3): 0.0, (3, 1, 1): 1.0, (3, 1, 2): 0.0, (3, 1, 3): 0.0, (3, 2, 1): 0.0, (3, 2, 2): 0.0, (3, 2, 3): 0.0, (3, 3, 1): 0.0, (3, 3, 2): 0.0, (3, 3, 3): 0.0, (3, 4, 1): 1.0, (3, 4, 2): 0.0, (3, 4, 3): 0.0, (3, 5, 1): 1.0, (3, 5, 2): 0.0, (3, 5, 3): 0.0, (3, 6, 1): 1.0, (3, 6, 2): 0.0, (3, 6, 3): 0.0, (3, 7, 1): 1.0, (3, 7, 2): 0.0, (3, 7, 3): 0.0, (3, 8, 1): 1.0, (3, 8, 2): 0.0, (3, 8, 3): 0.0, (3, 9, 1): 0.0, (3, 9, 2): 0.0, (3, 9, 3): 0.0, (3, 10, 1): 0.0, (3, 10, 2): 0.0, (3, 10, 3): 0.0, (3, 11, 1): 1.0, (3, 11, 2): 0.0, (3, 11, 3): 0.0, (3, 12, 1): 0.0, (3, 12, 2): 0.0, (3, 12, 3): 1.0, (3, 13, 1): 0.0, (3, 13, 2): 0.0, (3, 13, 3): 1.0, (3, 14, 1): 0.0, (3, 14, 2): 0.0, (3, 14, 3): 1.0, (4, 1, 1): 1.0, (4, 1, 2): 0.0, (4, 1, 3): 0.0, (4, 2, 1): 1.0, (4, 2, 2): 0.0, (4, 2, 3): 0.0, (4, 3, 1): 1.0, (4, 3, 2): 0.0, (4, 3, 3): 0.0, (4, 4, 1): 0.0, (4, 4, 2): 0.0, (4, 4, 3): 0.0, (4, 5, 1): 0.0, (4, 5, 2): 0.0, (4, 5, 3): 0.0, (4, 6, 1): 1.0, (4, 6, 2): 0.0, (4, 6, 3): 0.0, (4, 7, 1): 1.0, (4, 7, 2): 0.0, (4, 7, 3): 0.0, (4, 8, 1): 1.0, (4, 8, 2): 0.0, (4, 8, 3): 0.0, (4, 9, 1): 0.0, (4, 9, 2): 0.0, (4, 9, 3): 1.0, (4, 10, 1): 0.0, (4, 10, 2): 0.0, (4, 10, 3): 1.0, (4, 11, 1): 0.0, (4, 11, 2): 0.0, (4, 11, 3): 0.0, (4, 12, 1): 0.0, (4, 12, 2): 0.0, (4, 12, 3): 0.0, (4, 13, 1): 1.0, (4, 13, 2): 0.0, (4, 13, 3): 0.0, (4, 14, 1): 1.0, (4, 14, 2): 0.0, (4, 14, 3): 0.0}
+problem_start = Problem(data, demand_dict, eps)
+problem_start.setStart(dct)
+problem_start.model.update()
+problem_start.model.optimize()
+
+
 # **** Column Generation ****
 # Prerequisites
 modelImprovable = True
@@ -99,6 +106,12 @@ for i in I:
     for t in T:
         start_values_p[(i, t)] = problem_start.p[i, t].x
 
+start_values_x = {}
+for i in I:
+    for t in T:
+        for s in K:
+            start_values_x[(i, t, s)] = problem_start.x[i, t, s].x
+
 while True:
     # Initialize iterations
     itr = 0
@@ -119,12 +132,11 @@ while True:
 
     start_values_perf_dict = {}
     for i in I:
-        start_values_perf_dict[f"Physician_{i}"] = {(i, t): start_values_p[(i, t)] for t in T}
+        start_values_perf_dict[f"Physician_{i}"] = {(i, t, s): start_values_perf[(i, t, s)] for t in T for s in K}
 
     Perf_schedules = {}
     for index in I:
         Perf_schedules[f"Physician_{index}"] = [start_values_perf_dict[f"Physician_{index}"]]
-
 
     start_values_p_dict = {}
     for i in I:
@@ -133,6 +145,14 @@ while True:
     P_schedules = {}
     for index in I:
         P_schedules[f"Physician_{index}"] = [start_values_p_dict[f"Physician_{index}"]]
+
+    start_values_x_dict = {}
+    for i in I:
+        start_values_x_dict[f"Physician_{i}"] = {(i, t, s): start_values_x[(i, t, s)] for t in T for s in K}
+
+    X1_schedules = {}
+    for index in I:
+        X1_schedules[f"Physician_{index}"] = [start_values_x_dict[f"Physician_{index}"]]
 
 
     master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values_perf)
@@ -192,6 +212,8 @@ while True:
             Perf_schedules[f"Physician_{index}"].append(optPerf_values)
             optP_values = subproblem.getOptP()
             P_schedules[f"Physician_{index}"].append(optP_values)
+            optx1_values = subproblem.getOptX()
+            X1_schedules[f"Physician_{index}"].append(optx1_values)
 
             # Check if SP is solvable
             status = subproblem.getStatus()
@@ -260,5 +282,5 @@ print(Perf_schedules)
 performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T))
 
 
-dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), Perf_schedules, I ,max_itr), len(I), len(T), len(K))
+dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), X1_schedules, I ,max_itr), len(I), len(T), len(K))
 print(dicts)

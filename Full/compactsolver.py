@@ -185,6 +185,8 @@ class Problem:
         final = [0.0 if x == -0.0 else x for x in liste]
         return final
 
-    def setStart(self):
+    def setStart(self, start_dict):
+        for key, value in start_dict.items():
+            self.x[key].Start = value
         self.model.Params.MIPFocus = 3
         self.model.update()

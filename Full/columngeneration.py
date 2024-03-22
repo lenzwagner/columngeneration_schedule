@@ -57,7 +57,8 @@ time_Limit = 3600
 max_itr = 20
 output_len = 98
 mue = 1e-4
-eps = 0.09
+threshold = 5e-7
+eps = 0.1
 
 # **** Compact Solver ****
 problem_t0 = time.time()
@@ -226,7 +227,7 @@ while True:
             last_itr = itr + 1
 
             # Generate and add columns with reduced cost
-            if reducedCost < -1e-6:
+            if reducedCost < -threshold:
                 Schedules = subproblem.getNewSchedule()
                 master.addColumn(index, itr, Schedules)
                 master.addLambda(index, itr)

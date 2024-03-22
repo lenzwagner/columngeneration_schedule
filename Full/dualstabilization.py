@@ -44,7 +44,7 @@ max_itr = 50
 output_len = 98
 mue = 1e-4
 eps = 0.38
-threshold = 1e-6
+threshold = 5e-7
 
 # **** Compact Solver ****
 problem_t0 = time.time()

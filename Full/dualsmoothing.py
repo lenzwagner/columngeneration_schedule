@@ -185,7 +185,7 @@ while True:
             last_itr = itr + 1
 
             # Generate and add columns with reduced cost
-            if reducedCost < -1e-6:
+            if reducedCost < -5e-7:
                 Schedules = subproblem.getNewSchedule()
                 master.addColumn(index, itr, Schedules)
                 master.addLambda(index, itr)

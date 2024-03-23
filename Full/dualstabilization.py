@@ -112,112 +112,113 @@ while True:
     # Start time count
     t0 = time.time()
 
-    while (modelImprovable):
-        # Start
-        itr += 1
+    while True:
+        while (modelImprovable):
+            # Start
+            itr += 1
 
-        # Solve RMP
-        master.current_iteration = itr + 1
-        master.solveRelaxModel()
-        objValHistRMP.append(master.model.objval)
+            # Solve RMP
+            master.current_iteration = itr + 1
+            master.solveRelaxModel()
+            objValHistRMP.append(master.model.objval)
 
-        # Get Duals
-        duals_i = master.getDuals_i()
-        duals_ts = master.getDuals_ts()
+            # Get Duals
+            duals_i = master.getDuals_i()
+            duals_ts = master.getDuals_ts()
 
-        # Update delta
-        master.updateDeltaMinus(duals_ts)
-        master.updateDeltaPlus(duals_ts)
-        master.updateZetaPlus()
-        master.updateZetaMinus()
+            # Update delta
+            master.updateDeltaMinus(duals_ts)
+            master.updateDeltaPlus(duals_ts)
+            master.updateZetaPlus()
+            master.updateZetaMinus()
 
-        # Get Values
-        print("*{:^{output_len}}*".format(f"Current CG iteration {itr}", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Delta+ in Itr {itr}: {master.delta_plus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Delta- in Itr {itr}: {master.delta_minus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Zeta+ in Itr {itr}: {master.zeta_plus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Zeta- in Itr {itr}: {master.zeta_minus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Theta+ in Itr {itr}: {master.getThetaPlus()}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Theta- in Itr {itr}: {master.getThetaMinus()}", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-
-        # Save current optimality gap
-        gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
-        gap_rc_hist.append(gap_rc)
-
-        # Solve SPs
-        modelImprovable = False
-        for index in I:
-            # Build SP
-            subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps)
-            subproblem.buildModel()
-
-            # Save time to solve SP
-            sub_t0 = time.time()
-            subproblem.solveModel(time_Limit)
-            sub_totaltime = time.time() - sub_t0
-            timeHist.append(sub_totaltime)
-
-            # Get optimal values
-            optx_values = subproblem.getOptX()
-            Iter_schedules[f"Physician_{index}"].append(optx_values)
-
-            # Check if SP is solvable
-            status = subproblem.getStatus()
-            if status != 2:
-                raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
-
-            # Save ObjVal History
-            reducedCost = subproblem.model.objval
-            objValHistSP.append(reducedCost)
-
-            # Increase latest used iteration
-            last_itr = itr + 1
-
-            # Generate and add columns with reduced cost
-            if reducedCost < -threshold:
-                Schedules = subproblem.getNewSchedule()
-                master.addColumn(index, itr, Schedules)
-                master.addLambda(index, itr)
-                master.updateModel()
-                modelImprovable = True
-
-        # Update Model
-        master.updateModel()
-
-        # Calculate Metrics
-        avg_rc = sum(objValHistSP) / len(objValHistSP)
-        avg_rc_hist.append(avg_rc)
-        objValHistSP.clear()
-
-        avg_time = sum(timeHist)/len(timeHist)
-        avg_sp_time.append(avg_time)
-        timeHist.clear()
-
-        print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
-
-
-    if not modelImprovable:
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
-        print("*{:^{output_len}}*".format("Updating Parameters.....", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("Parameter succesfully updated!", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        master.updateDeltaPlus(duals_ts)
-        master.updateDeltaMinus(duals_ts)
-        master.updateZetaPlus()
-        master.updateZetaMinus()
-
-        if all(value < master.zetal for value in master.zeta_plus.values()) and \
-                all(value < master.zetal for value in master.zeta_minus.values()):
+            # Get Values
+            print("*{:^{output_len}}*".format(f"Current CG iteration {itr}", output_len=output_len))
             print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format("Final iteration completed!", output_len=output_len))
             print("*{:^{output_len}}*".format("", output_len=output_len))
-            break
+            print("*{:^{output_len}}*".format(f"Delta+ in Itr {itr}: {master.delta_plus}", output_len=output_len))
+            print("*{:^{output_len}}*".format(f"Delta- in Itr {itr}: {master.delta_minus}", output_len=output_len))
+            print("*{:^{output_len}}*".format(f"Zeta+ in Itr {itr}: {master.zeta_plus}", output_len=output_len))
+            print("*{:^{output_len}}*".format(f"Zeta- in Itr {itr}: {master.zeta_minus}", output_len=output_len))
+            print("*{:^{output_len}}*".format(f"Theta+ in Itr {itr}: {master.getThetaPlus()}", output_len=output_len))
+            print("*{:^{output_len}}*".format(f"Theta- in Itr {itr}: {master.getThetaMinus()}", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
+
+            # Save current optimality gap
+            gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
+            gap_rc_hist.append(gap_rc)
+
+            # Solve SPs
+            modelImprovable = False
+            for index in I:
+                # Build SP
+                subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps)
+                subproblem.buildModel()
+
+                # Save time to solve SP
+                sub_t0 = time.time()
+                subproblem.solveModel(time_Limit)
+                sub_totaltime = time.time() - sub_t0
+                timeHist.append(sub_totaltime)
+
+                # Get optimal values
+                optx_values = subproblem.getOptX()
+                Iter_schedules[f"Physician_{index}"].append(optx_values)
+
+                # Check if SP is solvable
+                status = subproblem.getStatus()
+                if status != 2:
+                    raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
+
+                # Save ObjVal History
+                reducedCost = subproblem.model.objval
+                objValHistSP.append(reducedCost)
+
+                # Increase latest used iteration
+                last_itr = itr + 1
+
+                # Generate and add columns with reduced cost
+                if reducedCost < -threshold:
+                    Schedules = subproblem.getNewSchedule()
+                    master.addColumn(index, itr, Schedules)
+                    master.addLambda(index, itr)
+                    master.updateModel()
+                    modelImprovable = True
+
+            # Update Model
+            master.updateModel()
+
+            # Calculate Metrics
+            avg_rc = sum(objValHistSP) / len(objValHistSP)
+            avg_rc_hist.append(avg_rc)
+            objValHistSP.clear()
+
+            avg_time = sum(timeHist)/len(timeHist)
+            avg_sp_time.append(avg_time)
+            timeHist.clear()
+
+            print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
+
+        if not modelImprovable:
+            if all(value < master.zetal for value in master.zeta_plus.values()) and \
+                    all(value < master.zetal for value in master.zeta_minus.values()):
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+                print("*{:^{output_len}}*".format("Final iteration completed!", output_len=output_len))
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+                break
+            else:
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+                print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
+                print("*{:^{output_len}}*".format("Updating Parameters.....", output_len=output_len))
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+                print("*{:^{output_len}}*".format("Parameter succesfully updated!", output_len=output_len))
+                print("*{:^{output_len}}*".format("", output_len=output_len))
+                master.updateDeltaPlus(duals_ts)
+                master.updateDeltaMinus(duals_ts)
+                master.updateZetaPlus()
+                master.updateZetaMinus()
+                print("*{:^{output_len}}*".format(f"{master.zeta_plus}", output_len=output_len))
 
 
 

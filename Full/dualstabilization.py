@@ -132,19 +132,6 @@ while True:
             master.updateZetaPlus()
             master.updateZetaMinus()
 
-            # Get Values
-            print("*{:^{output_len}}*".format(f"Current CG iteration {itr}", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format(f"Delta+ in Itr {itr}: {master.delta_plus}", output_len=output_len))
-            print("*{:^{output_len}}*".format(f"Delta- in Itr {itr}: {master.delta_minus}", output_len=output_len))
-            print("*{:^{output_len}}*".format(f"Zeta+ in Itr {itr}: {master.zeta_plus}", output_len=output_len))
-            print("*{:^{output_len}}*".format(f"Zeta- in Itr {itr}: {master.zeta_minus}", output_len=output_len))
-            print("*{:^{output_len}}*".format(f"Theta+ in Itr {itr}: {master.getThetaPlus()}", output_len=output_len))
-            print("*{:^{output_len}}*".format(f"Theta- in Itr {itr}: {master.getThetaMinus()}", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-
             # Save current optimality gap
             gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
             gap_rc_hist.append(gap_rc)
@@ -218,6 +205,7 @@ while True:
                 master.updateDeltaMinus(duals_ts)
                 master.updateZetaPlus()
                 master.updateZetaMinus()
+                modelImprovable = True
                 print("*{:^{output_len}}*".format(f"{master.zeta_plus}", output_len=output_len))
 
 
@@ -226,13 +214,6 @@ while True:
 
 # Solve Master Problem with integrality restored
 master.finalSolve(time_Limit)
-
-print("*{:^{output_len}}*".format(f"Delta+: {master.delta_plus}", output_len=output_len))
-print("*{:^{output_len}}*".format(f"Delta-: {master.delta_minus}", output_len=output_len))
-print("*{:^{output_len}}*".format(f"Zeta+: {master.zeta_plus}", output_len=output_len))
-print("*{:^{output_len}}*".format(f"Zeta-: {master.zeta_minus}", output_len=output_len))
-print("*{:^{output_len}}*".format(f"Theta+: {master.getThetaPlus()}", output_len=output_len))
-print("*{:^{output_len}}*".format(f"Theta-: {master.getThetaMinus()}", output_len=output_len))
 master.model.write("final.lp")
 master.model.write("final.sol")
 

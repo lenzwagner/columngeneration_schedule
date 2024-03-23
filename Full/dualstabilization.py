@@ -40,10 +40,10 @@ demand_dict = generate_cost(len(T), len(I))
 
 # Parameter
 time_Limit = 3600
-max_itr = 50
+max_itr = 200
 output_len = 98
 mue = 1e-4
-eps = 0.38
+eps = 0.2
 threshold = 5e-7
 
 # **** Compact Solver ****
@@ -98,7 +98,7 @@ while True:
     for index in I:
         Iter_schedules[f"Physician_{index}"] = []
 
-    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, 1, 0.1, 0.5, threshold, start_values)
+    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, 1, 0.1, 0.9, 0.01, start_values)
     master.buildModel()
     print("*" * (output_len + 2))
     print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
@@ -109,26 +109,12 @@ while True:
     master.updateModel()
     master.solveRelaxModel()
 
-    # Retrieve dual values
-    duals_i0 = master.getDuals_i()
-    duals_ts0 = master.getDuals_ts()
-
     # Start time count
     t0 = time.time()
 
-    while (modelImprovable) and itr < max_itr:
+    while (modelImprovable):
         # Start
         itr += 1
-        print("*{:^{output_len}}*".format(f"Current CG iteration {itr}", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Delta+ in Itr {itr}: {master.delta_plus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Delta- in Itr {itr}: {master.delta_minus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Zeta+ in Itr {itr}: {master.zeta_plus}", output_len=output_len))
-        print("*{:^{output_len}}*".format(f"Zeta- in Itr {itr}: {master.zeta_minus}", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-        print("*{:^{output_len}}*".format("", output_len=output_len))
-
 
         # Solve RMP
         master.current_iteration = itr + 1
@@ -140,9 +126,23 @@ while True:
         duals_ts = master.getDuals_ts()
 
         # Update delta
-        master.updateDelta(duals_ts)
+        master.updateDeltaMinus(duals_ts)
+        master.updateDeltaPlus(duals_ts)
         master.updateZetaPlus()
         master.updateZetaMinus()
+
+        # Get Values
+        print("*{:^{output_len}}*".format(f"Current CG iteration {itr}", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Delta+ in Itr {itr}: {master.delta_plus}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Delta- in Itr {itr}: {master.delta_minus}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Zeta+ in Itr {itr}: {master.zeta_plus}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Zeta- in Itr {itr}: {master.zeta_minus}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Theta+ in Itr {itr}: {master.getThetaPlus()}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"Theta- in Itr {itr}: {master.getThetaMinus()}", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
 
         # Save current optimality gap
         gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
@@ -199,23 +199,42 @@ while True:
 
         print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
 
-        if not modelImprovable:
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*" * (output_len + 2))
 
+    if not modelImprovable:
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
+        print("*{:^{output_len}}*".format("Updating Parameters.....", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("Parameter succesfully updated!", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        master.updateDeltaPlus(duals_ts)
+        master.updateDeltaMinus(duals_ts)
+        master.updateZetaPlus()
+        master.updateZetaMinus()
+
+        if all(value < master.zetal for value in master.zeta_plus.values()) and \
+                all(value < master.zetal for value in master.zeta_minus.values()):
+            print("*{:^{output_len}}*".format("", output_len=output_len))
+            print("*{:^{output_len}}*".format("Final iteration completed!", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
             break
 
-    if modelImprovable and itr == max_itr:
-        print("*{:^{output_len}}*".format("More iterations needed. Increase max_itr and restart the process.",
-                                          output_len=output_len))
-        max_itr *= 2
-    else:
-        break
+
+
+
 
 # Solve Master Problem with integrality restored
 master.finalSolve(time_Limit)
+
+print("*{:^{output_len}}*".format(f"Delta+: {master.delta_plus}", output_len=output_len))
+print("*{:^{output_len}}*".format(f"Delta-: {master.delta_minus}", output_len=output_len))
+print("*{:^{output_len}}*".format(f"Zeta+: {master.zeta_plus}", output_len=output_len))
+print("*{:^{output_len}}*".format(f"Zeta-: {master.zeta_minus}", output_len=output_len))
+print("*{:^{output_len}}*".format(f"Theta+: {master.getThetaPlus()}", output_len=output_len))
+print("*{:^{output_len}}*".format(f"Theta-: {master.getThetaMinus()}", output_len=output_len))
+master.model.write("final.lp")
+master.model.write("final.sol")
+
 
 # Capture total time and objval
 total_time_cg = time.time() - t0

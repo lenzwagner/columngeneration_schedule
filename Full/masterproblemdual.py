@@ -18,11 +18,17 @@ class MasterProblem:
         self.max_itr = max_iteration
         self.cons_lmbda = {}
         self.output_len = nr
-        self.decay_rate = decay
+        self.decay_rate_minus = decay
+        self.decay_rate_plus = decay
         self.initial_delta = delta
         self.initial_zeta = zeta
         self.zetal = threshold
         self.start = start
+        self.zeta_plus = {}
+        self.zeta_minus = {}
+        self.delta_plus = {}
+        self.delta_minus = {}
+
 
     def buildModel(self):
         self.generateVariables()
@@ -38,6 +44,8 @@ class MasterProblem:
     def genParam(self):
         self.delta_plus, self.delta_minus = {(t, s): self.initial_delta for t in self.days for s in self.shifts}, {(t, s): self.initial_delta for t in self.days for s in self.shifts}
         self.zeta_plus, self.zeta_minus = {(t, s): self.initial_zeta for t in self.days for s in self.shifts}, {(t, s): self.initial_zeta for t in self.days for s in self.shifts}
+        self.model.update()
+
     def generateVariables(self):
         self.u = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, lb=0, name='u')
         self.performance_i = self.model.addVars(self.nurses, self.days, self.shifts, self.roster,
@@ -52,7 +60,7 @@ class MasterProblem:
         for t in self.days:
             for s in self.shifts:
                 self.cons_demand[t, s] = self.model.addConstr(
-                    gu.quicksum(self.performance_i[i, t, s, r]*self.lmbda[i, r] for i in self.nurses for r in self.rosterinitial) +
+                    gu.quicksum(self.performance_i[i, t, s, r] * self.lmbda[i, r] for i in self.nurses for r in self.rosterinitial) +
                     self.u[t, s] + self.theta_plus[t, s] - self.theta_minus[t, s] >= self.demand[t, s], "demand("+str(t)+","+str(s)+")")
                 self.model.addConstr(self.theta_plus[t, s] <= self.zeta_plus[t, s])
                 self.model.addConstr(self.theta_minus[t, s] <= self.zeta_minus[t, s])
@@ -60,10 +68,8 @@ class MasterProblem:
 
     def generateObjective(self):
         self.model.setObjective(gu.quicksum(self.u[t, s] for t in self.days for s in self.shifts) +
-                                gu.quicksum(self.delta_plus[t, s] * self.theta_plus[t, s] for t in self.days for s in
-                                            self.shifts) -
-                                gu.quicksum(self.delta_minus[t, s] * self.theta_minus[t, s] for t in self.days for s in
-                                            self.shifts),
+                                gu.quicksum(self.delta_plus[t, s] * self.theta_plus[t, s] for t in self.days for s in self.shifts) -
+                                gu.quicksum(self.delta_minus[t, s] * self.theta_minus[t, s] for t in self.days for s in self.shifts),
                                 sense=gu.GRB.MINIMIZE)
 
     def getDuals_i(self):
@@ -74,18 +80,23 @@ class MasterProblem:
         Pi_cons_demand = self.model.getAttr("QCPi", self.cons_demand)
         return Pi_cons_demand
 
-    def updateDelta(self, duals):
+    def updateDeltaPlus(self, duals):
+        for t in self.days:
+            for s in self.shifts:
+                self.delta_plus[t, s] = duals[(t, s)]
+        self.model.update()
+
+    def updateDeltaMinus(self, duals):
         for t in self.days:
             for s in self.shifts:
                 self.delta_minus[t, s] = duals[(t, s)]
-                self.delta_plus[t, s] = duals[(t, s)]
         self.model.update()
 
     def updateZetaPlus(self):
         for t in self.days:
             for s in self.shifts:
                 if self.zeta_plus[t, s] > self.zetal:
-                    self.zeta_plus[t, s] *= self.decay_rate
+                    self.zeta_plus[t, s] *= self.decay_rate_plus
                 else:
                     break
         self.model.update()
@@ -94,13 +105,19 @@ class MasterProblem:
         for t in self.days:
             for s in self.shifts:
                 if self.zeta_minus[t, s] > self.zetal:
-                    self.zeta_minus[t, s] *= self.decay_rate
+                    self.zeta_minus[t, s] *= self.decay_rate_minus
                 else:
                     break
         self.model.update()
 
     def updateModel(self):
         self.model.update()
+
+    def getThetaPlus(self):
+        return self.model.getAttr("X", self.theta_plus)
+
+    def getThetaMinus(self):
+        return self.model.getAttr("X", self.theta_minus)
 
     def setStartSolution(self):
         for i in self.nurses:

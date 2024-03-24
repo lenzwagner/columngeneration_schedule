@@ -105,15 +105,23 @@ while True:
     avg_sp_time = []
     gap_rc_hist = []
 
+    improvement_threshold = 0.01
+    alpha = 0.9
+
+
+    # Initialize previous duals to zero
+    prev_duals_i = {i: 0 for i in I}
+    prev_duals_ts = {(t, s): 0 for t in T for s in K}
+
     Iter_schedules = {}
     for index in I:
-        Iter_schedules[f"Physician_{index}"] = []
+        Iter_schedules[f'Physician_{index}'] = []
 
     master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
     master.buildModel()
-    print("*" * (output_len + 2))
-    print("*{:^{output_len}}*".format("Restricted Master Problem successfully built!", output_len=output_len))
-    print("*" * (output_len + 2))
+    print('*' * (output_len + 2))
+    print('*{:^{output_len}}*'.format('Restricted Master Problem successfully built!', output_len=output_len))
+    print('*' * (output_len + 2))
 
     # Initialize and solve relaxed model
     master.setStartSolution()
@@ -134,6 +142,7 @@ while True:
     while (modelImprovable) and itr < max_itr:
         # Start
         itr += 1
+        print(f'Alpha in CG Iteration {itr-1}: {alpha}')
 
         # Solve RMP
         master.current_iteration = itr + 1
@@ -143,6 +152,12 @@ while True:
         # Get Duals
         duals_i = master.getDuals_i()
         duals_ts = master.getDuals_ts()
+        smoothed_duals_i = {i: alpha * prev_duals_i[i] + (1 - alpha) * duals_i[i] for i in I}
+        smoothed_duals_ts = {(t, s): alpha * prev_duals_ts[(t, s)] + (1 - alpha) * duals_ts[(t, s)] for t in T for s in
+                             K}
+
+        # Update previous duals for next iteration
+        prev_duals_i, prev_duals_ts = duals_i.copy(), duals_ts.copy()
 
         # Smoothing
         alphas = [1, 0.8]
@@ -170,12 +185,12 @@ while True:
 
             # Get optimal values
             optx_values = subproblem.getOptX()
-            Iter_schedules[f"Physician_{index}"].append(optx_values)
+            Iter_schedules[f'Physician_{index}'].append(optx_values)
 
             # Check if SP is solvable
             status = subproblem.getStatus()
             if status != 2:
-                raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
+                raise Exception('*{:^{output_len}}*'.format('Pricing-Problem can not reach optimality!', output_len=output_len))
 
             # Save ObjVal History
             reducedCost = subproblem.model.objval
@@ -204,18 +219,30 @@ while True:
         avg_sp_time.append(avg_time)
         timeHist.clear()
 
-        print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
+        # Adjusting alpha based on improvment
+        if len(objValHistRMP) > 1:
+            improvement = objValHistRMP[-2] - objValHistRMP[-1]
+            print(f'Improvement {improvement}')
+        else:
+            improvement = float('inf')
+        if improvement < improvement_threshold:
+            alpha = min(alpha + 0.1, 1.0)
+        else:
+            alpha = max(alpha - 0.1, 0.0)
+
+
+        print('*{:^{output_len}}*'.format(f'End CG iteration {itr}', output_len=output_len))
 
         if not modelImprovable:
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*{:^{output_len}}*".format("No more improvable columns found.", output_len=output_len))
-            print("*{:^{output_len}}*".format("", output_len=output_len))
-            print("*" * (output_len + 2))
+            print('*{:^{output_len}}*'.format('', output_len=output_len))
+            print('*{:^{output_len}}*'.format('No more improvable columns found.', output_len=output_len))
+            print('*{:^{output_len}}*'.format('', output_len=output_len))
+            print('*' * (output_len + 2))
 
             break
 
     if modelImprovable and itr == max_itr:
-        print("*{:^{output_len}}*".format("More iterations needed. Increase max_itr and restart the process.",
+        print('*{:^{output_len}}*'.format('More iterations needed. Increase max_itr and restart the process.',
                                           output_len=output_len))
         max_itr *= 2
     else:
@@ -231,40 +258,40 @@ final_obj_cg = master.model.objval
 
 # Define function
 def printResults(itr, total_time, time_problem, obj_val_problem, final_obj_cg, nr):
-    print("*" * (nr + 2))
-    print("*{:^{nr}}*".format("***** Results *****", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("Total Column Generation iterations: " + str(itr), nr=nr))
-    print("*{:^{nr}}*".format("Total elapsed time: " + str(round((total_time), 4)) + " seconds", nr=nr))
-    print("*{:^{nr}}*".format("Final Column Generation solution: " + str(round(final_obj_cg, 3)), nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("The optimal solution found by compact solver is: " + str(round(obj_val_problem, 3)), nr=nr))
-    print("*{:^{nr}}*".format("The optimal solution found by the Column Generation solver is: " + str(round(final_obj_cg, 3)), nr=nr))
+    print('*' * (nr + 2))
+    print('*{:^{nr}}*'.format('***** Results *****', nr=nr))
+    print('*{:^{nr}}*'.format('', nr=nr))
+    print('*{:^{nr}}*'.format('Total Column Generation iterations: ' + str(itr), nr=nr))
+    print('*{:^{nr}}*'.format('Total elapsed time: ' + str(round((total_time), 4)) + ' seconds', nr=nr))
+    print('*{:^{nr}}*'.format('Final Column Generation solution: ' + str(round(final_obj_cg, 3)), nr=nr))
+    print('*{:^{nr}}*'.format('', nr=nr))
+    print('*{:^{nr}}*'.format('The optimal solution found by compact solver is: ' + str(round(obj_val_problem, 3)), nr=nr))
+    print('*{:^{nr}}*'.format('The optimal solution found by the Column Generation solver is: ' + str(round(final_obj_cg, 3)), nr=nr))
     gap = round(((round(final_obj_cg, 3)-round(obj_val_problem, 3))/round(final_obj_cg, 1))*100, 3)
-    gap_str = f"{gap}%"
+    gap_str = f'{gap}%'
     if round(final_obj_cg, 3)-round(obj_val_problem, 3) == 0:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
+        print('*{:^{nr}}*'.format('The Optimality-GAP is ' + str(gap_str), nr=nr))
     else:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
-        print("*{:^{nr}}*".format("Column Generation does not provide the global optimal solution!", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
-    print("*{:^{nr}}*".format("Solving Times:", nr=nr))
-    print("*{:^{nr}}*".format(f"Time Column Generation: {round(total_time, 4)} seconds", nr=nr))
-    print("*{:^{nr}}*".format(f"Time Compact Solver: {round(time_problem, 4)} seconds", nr=nr))
-    print("*{:^{nr}}*".format("", nr=nr))
+        print('*{:^{nr}}*'.format('The Optimality-GAP is ' + str(gap_str), nr=nr))
+        print('*{:^{nr}}*'.format('Column Generation does not provide the global optimal solution!', nr=nr))
+    print('*{:^{nr}}*'.format('', nr=nr))
+    print('*{:^{nr}}*'.format('Solving Times:', nr=nr))
+    print('*{:^{nr}}*'.format(f'Time Column Generation: {round(total_time, 4)} seconds', nr=nr))
+    print('*{:^{nr}}*'.format(f'Time Compact Solver: {round(time_problem, 4)} seconds', nr=nr))
+    print('*{:^{nr}}*'.format('', nr=nr))
     if round((total_time), 4) < time_problem:
-        print("*{:^{nr}}*".format(
-            "Column Generation is faster by " + str(round((time_problem - round((total_time), 4)), 3)) + " seconds,", nr=nr))
-        print("*{:^{nr}}*".format(
-            "which is " + str(round((time_problem/ round(total_time, 4)), 3)) + "x times faster.", nr=nr))
+        print('*{:^{nr}}*'.format(
+            'Column Generation is faster by ' + str(round((time_problem - round((total_time), 4)), 3)) + ' seconds,', nr=nr))
+        print('*{:^{nr}}*'.format(
+            'which is ' + str(round((time_problem/ round(total_time, 4)), 3)) + 'x times faster.', nr=nr))
     elif round((total_time), 4) > time_problem:
-        print("*{:^{nr}}*".format(
-            "Compact solver is faster by " + str(round((round((total_time), 4) - time_problem), 3)) + " seconds,", nr=nr))
-        print("*{:^{nr}}*".format(
-            "which is " + str(round((round(total_time, 4)/ time_problem), 3)) + "x times faster.", nr=nr))
+        print('*{:^{nr}}*'.format(
+            'Compact solver is faster by ' + str(round((round((total_time), 4) - time_problem), 3)) + ' seconds,', nr=nr))
+        print('*{:^{nr}}*'.format(
+            'which is ' + str(round((round(total_time, 4)/ time_problem), 3)) + 'x times faster.', nr=nr))
     else:
-        print("*{:^{nr}}*".format("Column Generation and compact solver are equally fast: " + str(time_problem) + " seconds", nr=nr))
-    print("*" * (nr + 2))
+        print('*{:^{nr}}*'.format('Column Generation and compact solver are equally fast: ' + str(time_problem) + ' seconds', nr=nr))
+    print('*' * (nr + 2))
 
 printResults(itr, total_time_cg, time_problem, obj_val_problem, final_obj_cg, output_len)
 

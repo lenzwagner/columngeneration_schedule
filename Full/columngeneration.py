@@ -287,7 +287,7 @@ printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValH
 plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
 print(Perf_schedules)
-performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T))
+performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T), 'perf_over_time')
 
 
 dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), X1_schedules, I ,max_itr), len(I), len(T), len(K))

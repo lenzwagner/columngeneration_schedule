@@ -75,7 +75,10 @@ def medianplots(list_cg, list_compact):
     plt.legend()
     plt.show()
 
-def performancePlot(p_list, days):
+def performancePlot(p_list, days, name):
+    file = str(name)
+    file_name = f'./images/' + file + '.png'
+
     sns.set(style='darkgrid')
 
     phys_nr = len(p_list) // days
@@ -97,6 +100,8 @@ def performancePlot(p_list, days):
     plt.ylabel('Motivation')
     plt.title('Performance over Time')
     plt.legend(title='Phys')
+
+    plt.savefig(file_name, format='png')
 
     plt.show()
 

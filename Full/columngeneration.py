@@ -273,10 +273,13 @@ print(f" Final IP: {objValHistRMP[-1]}")
 print(f" Final LP: {objValHistRMP[-2]}")
 
 # Calculate Gap
+# Relative to the lower bound (best possible achievable solution)
 gap = ((objValHistRMP[-1]-objValHistRMP[-2])/objValHistRMP[-2])*100
 print(f"Gap: {round(gap,4)}%")
 
-#Lagragian Bound
+# Lagragian Bound
+# Only yields feasible results if the SPs are solved to optimailty
+#
 lagranigan_bound = round((objValHistRMP[-2] + sum_rc_hist[-1]), 3)
 if round(lagranigan_bound, 2) == round(objValHistRMP[-1], 2):
     print(f"Optimal Solution found ;)")

@@ -122,6 +122,7 @@ while True:
     timeHist = []
     objValHistRMP = []
     avg_rc_hist = []
+    sum_rc_hist = []
     avg_sp_time = []
     gap_rc_hist = []
 
@@ -239,7 +240,9 @@ while True:
 
         # Calculate Metrics
         avg_rc = sum(objValHistSP) / len(objValHistSP)
+        sum_rc = sum(objValHistSP)
         avg_rc_hist.append(avg_rc)
+        sum_rc_hist.append(sum_rc)
         objValHistSP.clear()
 
         avg_time = sum(timeHist)/len(timeHist)
@@ -273,13 +276,20 @@ objValHistRMP.append(master.model.objval)
 # Capture total time and objval
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
-
-
 print(f" Final IP: {objValHistRMP[-1]}")
 print(f" Final LP: {objValHistRMP[-2]}")
 
+# Calculate Gap
 gap = ((objValHistRMP[-1]-objValHistRMP[-2])/objValHistRMP[-2])*100
 print(f"Gap: {round(gap,4)}%")
+
+#Lagragian Bound
+lagranigan_bound = round((objValHistRMP[-2] + sum_rc_hist[-1]), 3)
+if round(lagranigan_bound, 2) == round(objValHistRMP[-1], 2):
+    print(f"Optimal Solution found ;)")
+else:
+    print(f"No optimal solution found :(")
+  
 
 # Print Results
 printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2])

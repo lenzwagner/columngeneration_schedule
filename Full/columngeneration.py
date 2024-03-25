@@ -91,7 +91,7 @@ problem_start.model.Params.MIPFocus = 1
 problem_start.model.Params.Heuristics = 1
 problem_start.model.Params.NoRelHeurTime = 100
 problem_start.model.Params.RINS = 10
-problem_start.model.Params.MIPGap = 0.7
+problem_start.model.Params.MIPGap = 0.99
 problem_start.model.update()
 problem_start.model.optimize()
 start_values_perf = {}
@@ -268,27 +268,28 @@ print(f" List of objvals relaxed {objValHistRMP}")
 # Solve Master Problem with integrality restored
 master.finalSolve(time_Limit)
 master.model.write("Final_IP.sol")
+objValHistRMP.append(master.model.objval)
 
 # Capture total time and objval
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
 
 
-print(f" Final IP: {final_obj_cg}")
-print(f" Final LP: {objValHistRMP[-1]}")
+print(f" Final IP: {objValHistRMP[-1]}")
+print(f" Final LP: {objValHistRMP[-2]}")
 
-gap = ((final_obj_cg-objValHistRMP[-1])/objValHistRMP[-1])*100
-print(f"Gap: {gap}")
+gap = ((objValHistRMP[-1]-objValHistRMP[-2])/objValHistRMP[-2])*100
+print(f"Gap: {round(gap,4)}%")
 
 # Print Results
-printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-1])
+printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2])
 
 # Plots
 plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
-print(Perf_schedules)
+#print(Perf_schedules)
 performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T), 'perf_over_time')
 
-
-dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), X1_schedules, I ,max_itr), len(I), len(T), len(K))
-print(dicts)
+# Rest
+#dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), X1_schedules, I ,max_itr), len(I), len(T), len(K))
+#print(dicts)

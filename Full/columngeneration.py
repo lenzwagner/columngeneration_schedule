@@ -72,13 +72,6 @@ time_problem = time.time() - problem_t0
 vals_prob = problem.get_final_values()
 print(obj_val_problem)
 
-
-
-problem_start = Problem(data, demand_dict, eps)
-problem_start.model.update()
-problem_start.model.optimize()
-
-
 # **** Column Generation ****
 # Prerequisites
 modelImprovable = True
@@ -292,7 +285,7 @@ else:
   
 
 # Print Results
-printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2])
+printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2], lagranigan_bound, obj_val_problem)
 
 # Plots
 plot_obj_val(objValHistRMP, 'obj_val_plot')

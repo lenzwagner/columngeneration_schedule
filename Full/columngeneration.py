@@ -1,17 +1,10 @@
-import pandas as pd
-import numpy as np
-import time
-import matplotlib.pyplot as plt
+import random
 from masterproblem import *
 from plots import *
-import seaborn as sns
+from setup import *
 from gcutil import *
-import random
 from subproblem import *
 from compactsolver import *
-
-# Set of indices
-I, T, K = [1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [1, 2, 3]
 
 # Create Dataframes
 data = pd.DataFrame({
@@ -20,45 +13,17 @@ data = pd.DataFrame({
     'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
 })
 
-# Additional Sets
-Min_WD_i = [2, 3, 2, 3]
-Max_WD_i = [5, 5, 5, 6]
-S_T = {1: 8, 2: 8, 3: 8}
-I_T = {1: 40, 2: 40, 3: 40, 4: 40}
-W_I = {1: 1, 2: 1, 3: 1, 4: 1}
-
-# Zipping
-Min_WD_i = {a: f for a, f in zip(I, Min_WD_i)}
-Max_WD_i = {a: g for a, g in zip(I, Max_WD_i)}
-
-# Demand Dict
-demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
-               (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
-               (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
-               (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
-
-random.seed(13333)
-def generate_cost(num_days, phys):
-    cost = {}
-    shifts = [1, 2, 3]
-    for day in range(1, num_days + 1):
-        num_costs = phys
-        for shift in shifts[:-1]:
-            shift_cost = random.randrange(0, num_costs)
-            cost[(day, shift)] = shift_cost
-            num_costs -= shift_cost
-        cost[(day, shifts[-1])] = num_costs
-    return cost
-
-demand_dict = generate_cost(len(T), len(I))
-
 # Parameter
+random.seed(13333)
 time_Limit = 3600
 max_itr = 20
 output_len = 98
 mue = 1e-4
 threshold = 5e-7
 eps = 0.1
+
+# Demand Dict
+demand_dict = generate_cost(len(T), len(I), len(K))
 
 # **** Compact Solver ****
 problem_t0 = time.time()
@@ -188,6 +153,7 @@ while True:
         # Solve SPs
         modelImprovable = False
         for index in I:
+
             # Build SP
             subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps)
             subproblem.buildModel()

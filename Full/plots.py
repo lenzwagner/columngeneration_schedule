@@ -80,14 +80,13 @@ def performancePlot(p_list, days, name):
     file_name = f'./images/' + file + '.png'
 
     sns.set(style='darkgrid')
-
     phys_nr = len(p_list) // days
 
     phys_list = [p_list[i * days:(i + 1) * days] for i in range(phys_nr)]
 
     data = {'Day': list(range(1, days + 1))}
     for idx, phys in enumerate(phys_list):
-        data[f'Phys {idx + 1}'] = phys
+        data[f'{idx + 1}'] = phys
 
     df = pd.DataFrame(data)
     df_melted = df.melt('Day', var_name='Phys', value_name='Performance')
@@ -98,9 +97,10 @@ def performancePlot(p_list, days, name):
     sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True, dashes=False, alpha=0.8, palette=palette)
     plt.xlabel('Day')
     plt.ylabel('Motivation')
-    plt.title('Performance over Time')
-    plt.legend(title='Phys')
+    plt.title('Physician Performance over Time')
+    plt.legend(title='Physician')
 
+    plt.yticks(np.arange(min(df_melted['Performance']), max(df_melted['Performance']) + 0.05, 0.05))
     plt.savefig(file_name, format='png')
 
     plt.show()

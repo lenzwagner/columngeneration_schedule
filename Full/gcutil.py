@@ -170,7 +170,7 @@ def create_demand_dict(num_days, total_demand):
 # **** Generate random pattern ****
 def generate_cost(num_days, phys, K):
     cost = {}
-    shifts = K
+    shifts = range(1, K + 1)
     for day in range(1, num_days + 1):
         num_costs = phys
         for shift in shifts[:-1]:

@@ -94,13 +94,13 @@ def performancePlot(p_list, days, name):
     palette = sns.color_palette("rocket", phys_nr)
     plt.xticks(range(1, days + 1))
 
-    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True, dashes=False, alpha=0.8, palette=palette)
+    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True,
+                 dashes=True, alpha=0.8, palette=palette, linewidth=1.5, zorder=3)
     plt.xlabel('Day')
-    plt.ylabel('Motivation')
+    plt.ylabel('Performance')
     plt.title('Physician Performance over Time')
     plt.legend(title='Physician')
 
-    plt.yticks(np.arange(min(df_melted['Performance']), max(df_melted['Performance']) + 0.05, 0.05))
     plt.savefig(file_name, format='png')
 
     plt.show()

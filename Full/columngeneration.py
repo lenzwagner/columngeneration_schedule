@@ -51,7 +51,7 @@ problem_start.model.Params.MIPFocus = 1
 problem_start.model.Params.Heuristics = 1
 problem_start.model.Params.NoRelHeurTime = 100
 problem_start.model.Params.RINS = 10
-problem_start.model.Params.MIPGap = 0.99
+problem_start.model.Params.MIPGap = 0.4
 problem_start.model.update()
 problem_start.model.optimize()
 start_values_perf = {}
@@ -246,8 +246,7 @@ gap = ((objValHistRMP[-1]-objValHistRMP[-2])/objValHistRMP[-2])*100
 print(f"Gap: {round(gap,4)}%")
 
 # Lagragian Bound
-# Only yields feasible results if the SPs are solved to optimailty
-#
+# Only yields feasible results if the SPs are solved to optimality
 lagranigan_bound = round((objValHistRMP[-2] + sum_rc_hist[-1]), 3)
 if round(lagranigan_bound, 2) == round(objValHistRMP[-1], 2):
     print(f"Optimal Solution found ;)")

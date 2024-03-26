@@ -96,6 +96,7 @@ def performancePlot(p_list, days, name):
 
     sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True,
                  dashes=True, alpha=0.8, palette=palette, linewidth=1.5, zorder=3)
+
     plt.xlabel('Day')
     plt.ylabel('Performance')
     plt.title('Physician Performance over Time')

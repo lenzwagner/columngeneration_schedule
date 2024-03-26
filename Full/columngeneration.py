@@ -1,4 +1,3 @@
-import random
 from masterproblem import *
 from plots import *
 from setup import *
@@ -6,6 +5,7 @@ from gcutil import *
 from subproblem import *
 from compactsolver import *
 
+# **** Prerequisites ****
 # Create Dataframes
 data = pd.DataFrame({
     'I': I + [np.nan] * (max(len(I), len(T), len(K)) - len(I)),
@@ -25,9 +25,10 @@ eps = 0.1
 # Demand Dict
 demand_dict = generate_cost(len(T), len(I), len(K))
 
+
 # **** Compact Solver ****
 problem_t0 = time.time()
-problem = Problem(data, demand_dict, eps)
+problem = Problem(data, demand_dict, eps, Min_WD_i, Max_WD_i)
 problem.buildLinModel()
 problem.updateModel()
 problem.solveModel()
@@ -37,13 +38,14 @@ time_problem = time.time() - problem_t0
 vals_prob = problem.get_final_values()
 print(obj_val_problem)
 
+
 # **** Column Generation ****
 # Prerequisites
 modelImprovable = True
 reached_max_itr = False
 
 # Get Starting Solutions
-problem_start = Problem(data, demand_dict, eps)
+problem_start = Problem(data, demand_dict, eps, Min_WD_i, Max_WD_i)
 problem_start.buildLinModel()
 problem_start.model.Params.MIPFocus = 1
 problem_start.model.Params.Heuristics = 1
@@ -155,7 +157,7 @@ while True:
         for index in I:
 
             # Build SP
-            subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps)
+            subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps, Min_WD_i, Max_WD_i)
             subproblem.buildModel()
 
             # Save time to solve SP

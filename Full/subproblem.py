@@ -2,7 +2,7 @@ import gurobipy as gu
 import math
 
 class Subproblem:
-    def __init__(self, duals_i, duals_ts, df, i, iteration, eps):
+    def __init__(self, duals_i, duals_ts, df, i, iteration, eps, Min_WD_i, Max_WD_i):
         itr = iteration + 1
         self.days = df['T'].dropna().astype(int).unique().tolist()
         self.shifts = df['K'].dropna().astype(int).unique().tolist()
@@ -24,6 +24,8 @@ class Subproblem:
         self.Max_WD = 5
         self.F_S = [(3, 1), (3, 2), (2, 1)]
         self.Days = len(self.days)
+        self.Min_WD_i = Min_WD_i
+        self.Max_WD_i = Max_WD_i
 
     def buildModel(self):
         self.generateVariables()
@@ -82,12 +84,12 @@ class Subproblem:
                 self.model.addLConstr(1 == gu.quicksum(self.x[i, t, k] for k in self.shifts) + (1 - self.y[i, t]))
                 self.model.addLConstr(gu.quicksum(self.rho[i, t, k] for k in self.shifts) == self.sc[i, t])
         for i in [self.index]:
-            for t in range(1, len(self.days) - self.Max_WD + 1):
+            for t in range(1, len(self.days) - self.Max_WD_i[i] + 1):
                 self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
-            for t in range(2, len(self.days) - self.Min_WD + 1):
+                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD_i[i])) <= self.Max_WD_i[i])
+            for t in range(2, len(self.days) - self.Min_WD_i[i] + 1):
                 self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
+                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD_i[i] + 1)) >= self.Min_WD_i[i] * (
                             self.y[i, t + 1] - self.y[i, t]))
         for i in [self.index]:
             for t in range(2, len(self.days) - self.Days_Off + 2):

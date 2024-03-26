@@ -214,3 +214,17 @@ def create_perf_dict(lst, index, days, shift):
                 result_dict[index_key] = value
 
     return result_dict
+
+def create_individual_working_list(phys, min_val, max_val, mean_val):
+    random_list = []
+
+    for _ in range(phys):
+        values = list(range(min_val, max_val + 1))
+        probs = [1 / (abs(val - mean_val) + 1) for val in values]
+        norm_probs = [prob / sum(probs) for prob in probs]
+
+        random_value = random.choices(values, weights=norm_probs)[0]
+
+        random_list.append(random_value)
+
+    return random_list

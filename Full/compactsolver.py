@@ -3,7 +3,7 @@ import time
 import math
 
 class Problem:
-    def __init__(self, dfData, DemandDF, eps):
+    def __init__(self, dfData, DemandDF, eps, Min_WD_i, Max_WD_i):
         self.I = dfData['I'].dropna().astype(int).unique().tolist()
         self.T = dfData['T'].dropna().astype(int).unique().tolist()
         self.K = dfData['K'].dropna().astype(int).unique().tolist()
@@ -26,6 +26,8 @@ class Problem:
         self.F_S = [(3, 1), (3, 2), (2, 1)]
         self.Days = len(self.T)
         self.demand_values = [self.demand[key] for key in self.demand.keys()]
+        self.Min_WD_i = Min_WD_i
+        self.Max_WD_i = Max_WD_i
 
     def buildLinModel(self):
         self.t0 = time.time()
@@ -103,12 +105,12 @@ class Problem:
 
     def genRegCons(self):
         for i in self.I:
-            for t in range(1, len(self.T) - self.Max_WD + 1):
+            for t in range(1, len(self.T) - self.Max_WD_i[i] + 1):
                 self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
-            for t in range(2, len(self.T) - self.Min_WD + 1):
+                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD_i[i])) <= self.Max_WD_i[i])
+            for t in range(2, len(self.T) - self.Min_WD_i[i] + 1):
                 self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
+                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD_i[i] + 1)) >= self.Min_WD_i[i] * (
                                 self.y[i, t + 1] - self.y[i, t]))
         for i in self.I:
             for t in range(2, len(self.T) - self.Days_Off + 2):

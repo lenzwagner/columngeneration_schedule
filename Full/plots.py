@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 import seaborn as sns
+from matplotlib.ticker import PercentFormatter, MaxNLocator
+import itertools
 import matplotlib.pyplot as plt
 from matplotlib.transforms import offset_copy
 

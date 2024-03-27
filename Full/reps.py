@@ -1,175 +1,241 @@
-import gurobipy as gu
-import math
+import time
+from masterproblem import *
+import random
+from plots import *
+from subproblem import *
+from gcutil import create_individual_working_list
+from compactsolver import *
 
-class Subproblem:
-    def __init__(self, duals_i, duals_ts, df, i, iteration, eps):
-        itr = iteration + 1
-        self.days = df['T'].dropna().astype(int).unique().tolist()
-        self.shifts = df['K'].dropna().astype(int).unique().tolist()
-        self.duals_i = duals_i
-        self.duals_ts = duals_ts
-        self.model = gu.Model("Subproblem")
-        self.index = i
-        self.itr = itr
-        self.End = len(self.days)
-        self.mu = 0.1
-        self.epsilon = eps
-        self.mue = 0.1
-        self.chi = 5
-        self.omega = math.floor(1 / 1e-6)
-        self.M = len(self.days) + self.omega
-        self.xi = 1 - self.epsilon * self.omega
-        self.Days_Off = 2
-        self.Min_WD = 2
-        self.Max_WD = 5
-        self.F_S = [(3, 1), (3, 2), (2, 1)]
-        self.Days = len(self.days)
+# Set of indices
+I, T, K = list(range(1, 10)), list(range(1, 15)), list(range(1, 4))
 
-    def buildModel(self):
-        self.generateVariables()
-        self.generateConstraints()
-        self.generateObjective()
-        self.model.update()
+# Create Dataframes
+data = pd.DataFrame({
+    'I': I + [np.nan] * (max(len(I), len(T), len(K)) - len(I)),
+    'T': T + [np.nan] * (max(len(I), len(T), len(K)) - len(T)),
+    'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
+})
 
-    def generateVariables(self):
-        self.x = self.model.addVars([self.index], self.days, self.shifts, vtype=gu.GRB.BINARY, name="x")
-        self.y = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="y")
-        self.o = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, name="o")
-        self.u = self.model.addVars(self.days, self.shifts, vtype=gu.GRB.CONTINUOUS, name="u")
-        self.sc = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="sc")
-        self.v = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="v")
-        self.q = self.model.addVars([self.index], self.days, self.shifts, vtype=gu.GRB.BINARY, name="q")
-        self.rho = self.model.addVars([self.index], self.days, self.shifts, vtype=gu.GRB.BINARY, name="rho")
-        self.z = self.model.addVars([self.index], self.days, self.shifts, vtype=gu.GRB.BINARY, name="z")
-        self.performance = self.model.addVars([self.index], self.days, self.shifts, [self.itr], vtype=gu.GRB.CONTINUOUS,
-                                              lb=0, ub=1, name="performance")
-        self.p = self.model.addVars([self.index], self.days, vtype=gu.GRB.CONTINUOUS, lb=0, ub=1, name="p")
-        self.n = self.model.addVars([self.index], self.days, vtype=gu.GRB.INTEGER, ub=self.End, lb=0, name="n")
-        self.n_h = self.model.addVars([self.index], self.days, vtype=gu.GRB.INTEGER, lb=0, ub=self.End, name="n_h")
-        self.h = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="h")
-        self.e = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="e")
-        self.kappa = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="kappa")
-        self.b = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="b")
-        self.phi = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="phi")
-        self.r = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="r")
-        self.f = self.model.addVars([self.index], self.days, vtype=gu.GRB.BINARY, name="f")
+Max_WD_i = create_individual_working_list(len(I), 5, 6, 5)
+Min_WD_i = create_individual_working_list(len(I), 3, 4, 3)
+Min_WD_i = {a: f for a, f in zip(I, Min_WD_i)}
+Max_WD_i = {a: g for a, g in zip(I, Max_WD_i)}
 
-    def generateConstraints(self):
-        for i in [self.index]:
-            for t in self.days:
-                self.model.addLConstr(gu.quicksum(self.x[i, t, k] for k in self.shifts) <= 1)
-                self.model.addLConstr(gu.quicksum(self.x[i, t, k] for k in self.shifts) == self.y[i, t])
-        for i in [self.index]:
-            for t in self.days:
-                for k in self.shifts:
-                    self.model.addLConstr(
-                        self.performance[i, t, k, self.itr] >= self.p[i, t] - self.M * (1 - self.x[i, t, k]))
-                    self.model.addLConstr(
-                        self.performance[i, t, k, self.itr] <= self.p[i, t] + self.M * (1 - self.x[i, t, k]))
-                    self.model.addLConstr(self.performance[i, t, k, self.itr] <= self.x[i, t, k])
-        for i in [self.index]:
-            for k in self.shifts:
-                for t in self.days:
-                    self.model.addLConstr(self.rho[i, t, k] <= 1 - self.q[i, t, k])
-                    self.model.addLConstr(self.rho[i, t, k] <= self.x[i, t, k])
-                    self.model.addLConstr(self.rho[i, t, k] >= (1 - self.q[i, t, k]) + self.x[i, t, k] - 1)
-                    self.model.addLConstr(self.z[i, t, k] <= self.q[i, t, k])
-                    self.model.addLConstr(self.z[i, t, k] <= (1 - self.y[i, t]))
-                    self.model.addLConstr(self.z[i, t, k] >= self.q[i, t, k] + (1 - self.y[i, t]) - 1)
-                for t in range(1, len(self.days)):
-                    self.model.addLConstr(self.q[i, t + 1, k] == self.x[i, t, k] + self.z[i, t, k])
-            for t in self.days:
-                self.model.addLConstr(1 == gu.quicksum(self.x[i, t, k] for k in self.shifts) + (1 - self.y[i, t]))
-                self.model.addLConstr(gu.quicksum(self.rho[i, t, k] for k in self.shifts) == self.sc[i, t])
-        for i in [self.index]:
-            for t in range(1, len(self.days) - self.Max_WD + 1):
-                self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
-            for t in range(2, len(self.days) - self.Min_WD + 1):
-                self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
-                            self.y[i, t + 1] - self.y[i, t]))
-        for i in [self.index]:
-            for t in range(2, len(self.days) - self.Days_Off + 2):
-                for s in range(t + 1, t + self.Days_Off):
-                    self.model.addLConstr(1 + self.y[i, t] >= self.y[i, t - 1] + self.y[i, s])
-        for i in [self.index]:
-            for k1, k2 in self.F_S:
-                for t in range(1, len(self.days)):
-                    self.model.addLConstr(self.x[i, t, k1] + self.x[i, t + 1, k2] <= 1)
-        for i in [self.index]:
-            for t in range(1 + self.chi, len(self.days) + 1):
-                self.model.addLConstr(
-                    (1 - self.r[i, t]) <= (1 - self.f[i, t - 1]) + gu.quicksum(
-                        self.sc[i, j] for j in range(t - self.chi, t)))
-                self.model.addLConstr(self.M * (1 - self.r[i, t]) >= (1 - self.f[i, t - 1]) + gu.quicksum(
-                    self.sc[i, j] for j in range(t - self.chi, t)))
-            for t in range(1, 1 + self.chi):
-                self.model.addLConstr(0 == self.r[i, t])
-            for t in self.days:
-                for tau in range(1, t + 1):
-                    self.model.addLConstr(self.f[i, t] >= self.sc[i, tau])
-                self.model.addLConstr(self.f[i, t] <= gu.quicksum(self.sc[i, tau] for tau in range(1, t + 1)))
-        for i in [self.index]:
-            self.model.addLConstr(0 == self.n[i, 1])
-            self.model.addLConstr(0 == self.sc[i, 1])
-            self.model.addLConstr(1 == self.p[i, 1])
-            self.model.addLConstr(0 == self.h[i, 1])
-            for t in self.days:
-                self.model.addLConstr(
-                    gu.quicksum(self.sc[i, j] for j in range(1, t + 1)) <= self.omega + self.M * self.kappa[i, t])
-                self.model.addLConstr(self.omega + self.mu <= gu.quicksum(self.sc[i, j] for j in range(1, t + 1)) + (
-                        1 - self.kappa[i, t]) * self.M)
-            for t in range(2, len(self.days) + 1):
-                self.model.addLConstr(self.n[i, t] == self.n_h[i, t] - self.e[i, t] + self.b[i, t])
-                self.model.addLConstr(self.n_h[i, t] <= self.n[i, t - 1] + self.sc[i, t])
-                self.model.addLConstr(self.n_h[i, t] >= (self.n[i, t - 1] + self.sc[i, t]) - self.M * self.r[i, t])
-                self.model.addLConstr(self.n_h[i, t] <= self.M * (1 - self.r[i, t]))
-                self.model.addLConstr(self.p[i, t] == 1 - self.epsilon * self.n[i, t] - self.xi * self.kappa[i, t])
-                self.model.addLConstr(self.omega * self.h[i, t] <= self.n[i, t])
-                self.model.addLConstr(self.n[i, t] <= ((self.omega - 1) + self.h[i, t]))
-                self.model.addLConstr(self.e[i, t] <= self.sc[i, t])
-                self.model.addLConstr(self.e[i, t] <= self.h[i, t - 1])
-                self.model.addLConstr(self.e[i, t] >= self.sc[i, t] + self.h[i, t - 1] - 1)
-                self.model.addLConstr(self.b[i, t] <= self.e[i, t])
-                self.model.addLConstr(self.b[i, t] <= self.r[i, t])
-                self.model.addLConstr(self.b[i, t] >= self.e[i, t] + self.r[i, t] - 1)
+# Empty Dicts
+optimal_results = {}
+gap_results = {}
+time_compact = {}
+time_cg = {}
 
-    def generateObjective(self):
-        self.model.setObjective(
-            0 - gu.quicksum(
-                self.performance[i, t, s, self.itr] * self.duals_ts[t, s] for i in [self.index] for t in self.days for s
-                in self.shifts) -
-            self.duals_i[self.index], sense=gu.GRB.MINIMIZE)
+# Start Reps
+for seed in range(110, 121):
+    random.seed(seed)
+    def generate_cost(num_days, phys, K):
+        cost = {}
+        shifts = range(1, K + 1)
+        for day in range(1, num_days + 1):
+            num_costs = phys
+            for shift in shifts[:-1]:
+                shift_cost = random.randrange(0, num_costs)
+                cost[(day, shift)] = shift_cost
+                num_costs -= shift_cost
+            cost[(day, shifts[-1])] = num_costs
+        return cost
 
-    def getNewSchedule(self):
-        return self.model.getAttr("X", self.performance)
+    demand_dict = generate_cost(14, len(I), len(K))
 
-    def getOptX(self):
-        vals_opt = self.model.getAttr("X", self.x)
-        vals_list = []
-        for vals in vals_opt.values():
-            vals_list.append(vals)
-        return vals_list
+    # Parameter
+    time_Limit = 3600
+    max_itr = 25
+    output_len = 98
+    mue = 1e-4
+    eps = 0.18
 
-    def getOptPerf(self):
-        vals_opt = self.model.getAttr("X", self.performance)
-        vals_list = []
-        for vals in vals_opt.values():
-            vals_list.append(vals)
-        return vals_list
+    # **** Compact Solver ****
+    problem_t0 = time.time()
+    problem = Problem(data, demand_dict, eps, Min_WD_i, Max_WD_i)
+    problem.buildLinModel()
+    problem.updateModel()
+    problem.solveModel()
 
-    def getStatus(self):
-        return self.model.status
+    obj_val_problem = round(problem.model.objval, 3)
+    time_problem = time.time() - problem_t0
+    vals_prob = problem.get_final_values()
+    print(obj_val_problem)
 
-    def solveModel(self, timeLimit):
-        try:
-            self.model.setParam('TimeLimit', timeLimit)
-            self.model.Params.OutputFlag = 0
-            self.model.Params.IntegralityFocus = 1
-            self.model.Params.FeasibilityTol = 1e-9
-            self.model.Params.BarConvTol = 0.0
-            self.model.Params.MIPGap = 1e-4
-            self.model.optimize()
-        except gu.GurobiError as e:
-            print('Error code ' + str(e.errno) + ': ' + str(e))
+
+    # **** Column Generation ****
+    # Prerequisites
+    modelImprovable = True
+    reached_max_itr = False
+
+    # Get Starting Solutions
+    problem_start = Problem(data, demand_dict, eps, Min_WD_i, Max_WD_i)
+    problem_start.buildLinModel()
+    problem_start.model.Params.MIPGap = 0.5
+    problem_start.model.update()
+    problem_start.model.optimize()
+    start_values = {}
+    for i in I:
+        for t in T:
+            for s in K:
+                start_values[(i, t, s)] = problem_start.perf[i, t, s].x
+
+    while True:
+        # Initialize iterations
+        itr = 0
+        t0 = time.time()
+        last_itr = 0
+
+        # Create empty results lists
+        objValHistSP = []
+        timeHist = []
+        objValHistRMP = []
+        avg_rc_hist = []
+        avg_sp_time = []
+        gap_rc_hist = []
+
+        Iter_schedules = {}
+        for index in I:
+            Iter_schedules[f"Physician_{index}"] = []
+
+        master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
+        master.buildModel()
+
+        # Initialize and solve relaxed model
+        master.setStartSolution()
+        master.updateModel()
+        master.solveRelaxModel()
+
+        # Retrieve dual values
+        duals_i0 = master.getDuals_i()
+        duals_ts0 = master.getDuals_ts()
+
+        # Start time count
+        t0 = time.time()
+
+        print("*" * (output_len + 2))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*{:^{output_len}}*".format("***** Starting Column Generation *****", output_len=output_len))
+        print("*{:^{output_len}}*".format("", output_len=output_len))
+        print("*" * (output_len + 2))
+
+        while (modelImprovable) and itr < max_itr:
+            # Start
+            itr += 1
+            print("*{:^{output_len}}*".format(f"Current CG iteration: {itr}", output_len=output_len))
+            print("*{:^{output_len}}*".format("", output_len=output_len))
+
+            # Solve RMP
+            master.current_iteration = itr + 1
+            master.solveRelaxModel()
+            objValHistRMP.append(master.model.objval)
+
+            # Get Duals
+            duals_i = master.getDuals_i()
+            duals_ts = master.getDuals_ts()
+
+            # Save current optimality gap
+            gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
+            gap_rc_hist.append(gap_rc)
+
+            # Solve SPs
+            modelImprovable = False
+            for index in I:
+                # Build SP
+                subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps, Min_WD_i, Max_WD_i)
+                subproblem.buildModel()
+
+                # Save time to solve SP
+                sub_t0 = time.time()
+                subproblem.solveModel(time_Limit)
+                sub_totaltime = time.time() - sub_t0
+                timeHist.append(sub_totaltime)
+
+                # Get optimal values
+                optx_values = subproblem.getOptX()
+                Iter_schedules[f"Physician_{index}"].append(optx_values)
+
+                # Check if SP is solvable
+                status = subproblem.getStatus()
+                if status != 2:
+                    raise Exception("*{:^{output_len}}*".format("Pricing-Problem can not reach optimality!", output_len=output_len))
+
+                # Save ObjVal History
+                reducedCost = subproblem.model.objval
+                objValHistSP.append(reducedCost)
+
+                # Increase latest used iteration
+                last_itr = itr + 1
+
+                # Generate and add columns with reduced cost
+                if reducedCost < -1e-6:
+                    Schedules = subproblem.getNewSchedule()
+                    master.addColumn(index, itr, Schedules)
+                    master.addLambda(index, itr)
+                    master.updateModel()
+                    modelImprovable = True
+
+            # Update Model
+            master.updateModel()
+
+            # Calculate Metrics
+            avg_rc = sum(objValHistSP) / len(objValHistSP)
+            avg_rc_hist.append(avg_rc)
+            objValHistSP.clear()
+
+            avg_time = sum(timeHist)/len(timeHist)
+            avg_sp_time.append(avg_time)
+            timeHist.clear()
+
+
+            if not modelImprovable:
+                break
+
+        if modelImprovable and itr == max_itr:
+            max_itr *= 2
+        else:
+            break
+
+    # Solve Master Problem with integrality restored
+    master.finalSolve(time_Limit)
+
+    # Capture total time and objval
+    total_time_cg = time.time() - t0
+    print("*{:^{output_len}}*".format(f"Total time: {total_time_cg}", output_len=output_len))
+
+    final_obj_cg = master.model.objval
+
+    gap_rc = round(((round(final_obj_cg, 2) - round(obj_val_problem, 2)) / round(final_obj_cg, 3)) * 100, 2)
+
+    if gap_rc > 0:
+        gap_rc_value = gap_rc
+    else:
+        gap_rc_value = 0.0
+
+    def is_Opt(final_obj_cg, obj_val_problem):
+        diff = round(final_obj_cg, 2) - round(obj_val_problem, 2)
+        if diff == 0:
+            is_optimal = 1
+        else:
+            is_optimal = 0
+
+        return is_optimal
+
+    # Optimality check
+    optimal_results[seed] = is_Opt(final_obj_cg, obj_val_problem)
+    gap_results[seed] = gap_rc_value
+
+    time_compact[seed] = time_problem
+    time_cg[seed] = round(total_time_cg, 4)
+
+
+# Get Pie-Chart
+pie_chart(optimal_results)
+
+# Violin Plots
+optBoxplot([value for value in gap_results.values() if value > 1e-8])
+violinplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))
+
+# Boxplots
+medianplots(list(sorted(time_cg.values())), list(sorted(time_compact.values())))

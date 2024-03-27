@@ -1,14 +1,12 @@
 import pandas as pd
 import numpy as np
-import time
 import matplotlib.pyplot as plt
 from masterproblem import *
 import seaborn as sns
+from setup import *
+import random
 from subproblem import *
-from compactsolver import Problem
-
-# Set of indices
-I, T, K = [1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [1, 2, 3]
+from compactsolver import *
 
 # Create Dataframes
 data = pd.DataFrame({
@@ -17,13 +15,6 @@ data = pd.DataFrame({
     'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
 })
 
-# Demand Dict
-demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
-               (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
-               (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
-               (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
-
-random.seed(124)
 
 # Parameter
 time_Limit = 3600
@@ -34,7 +25,7 @@ eps = 0.38
 
 # **** Compact Solver ****
 problem_t0 = time.time()
-problem = Problem(data, demand_dict, eps)
+problem = Problem(data, Demand_Dict, eps, Min_WD_i, Max_WD_i)
 problem.buildLinModel()
 problem.updateModel()
 problem.solveModel()
@@ -51,7 +42,7 @@ modelImprovable = True
 reached_max_itr = False
 
 # Get Starting Solutions
-problem_start = Problem(data, demand_dict, eps)
+problem_start = Problem(data, Demand_Dict, eps, Min_WD_i, Max_WD_i)
 problem_start.buildLinModel()
 problem_start.model.Params.MIPFocus = 1
 problem_start.model.Params.Heuristics = 1
@@ -92,7 +83,7 @@ while True:
     for index in I:
         Iter_schedules[f'Physician_{index}'] = []
 
-    master = MasterProblem(data, demand_dict, max_itr, itr, last_itr, output_len, start_values)
+    master = MasterProblem(data, Demand_Dict, max_itr, itr, last_itr, output_len, start_values)
     master.buildModel()
     print('*' * (output_len + 2))
     print('*{:^{output_len}}*'.format('Restricted Master Problem successfully built!', output_len=output_len))
@@ -149,7 +140,7 @@ while True:
         modelImprovable = False
         for index in I:
             # Build SP
-            subproblem = Subproblem(smoothed_duals_i, smoothed_duals_ts, data, index, itr, eps)
+            subproblem = Subproblem(smoothed_duals_i, smoothed_duals_ts, data, index, itr, eps, Min_WD_i, Max_WD_i)
             subproblem.buildModel()
 
             # Save time to solve SP

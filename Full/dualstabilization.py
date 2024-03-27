@@ -1,16 +1,12 @@
-import pandas as pd
 import numpy as np
 import time
 from gcutil import *
 import matplotlib.pyplot as plt
-from masterproblemdual import *
 import seaborn as sns
-import random
+from setup import *
 from subproblem import *
 from compactsolver import *
 
-# Set of indices
-I, T, K = [1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [1, 2, 3]
 
 # Create Dataframes
 data = pd.DataFrame({
@@ -18,26 +14,6 @@ data = pd.DataFrame({
     'T': T + [np.nan] * (max(len(I), len(T), len(K)) - len(T)),
     'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
 })
-
-# Demand Dict
-demand_dict1 = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0, (3, 1): 1, (3, 2): 1, (3, 3): 1, (4, 1): 1, (4, 2): 2, (4, 3): 0,
-               (5, 1): 2, (5, 2): 0, (5, 3): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (7, 1): 0, (7, 2): 3, (7, 3): 0, (8, 1): 2, (8, 2): 1, (8, 3): 0,
-               (9, 1): 0, (9, 2): 3, (9, 3): 0, (10, 1): 1, (10, 2): 1, (10, 3): 1, (11, 1): 3, (11, 2): 0, (11, 3): 0, (12, 1): 0, (12, 2): 2, (12, 3): 1,
-               (13, 1): 1, (13, 2): 1, (13, 3): 1, (14, 1): 2, (14, 2): 1, (14, 3): 0}
-random.seed(124)
-def generate_cost(num_days, phys):
-    cost = {}
-    shifts = [1, 2, 3]
-    for day in range(1, num_days + 1):
-        num_costs = phys
-        for shift in shifts[:-1]:
-            shift_cost = random.randrange(0, num_costs)
-            cost[(day, shift)] = shift_cost
-            num_costs -= shift_cost
-        cost[(day, shifts[-1])] = num_costs
-    return cost
-
-demand_dict = generate_cost(len(T), len(I))
 
 # Parameter
 time_Limit = 3600
@@ -49,7 +25,7 @@ threshold = 5e-7
 
 # **** Compact Solver ****
 problem_t0 = time.time()
-problem = Problem(data, demand_dict, eps)
+problem = Problem(data, Demand_Dict, eps, Min_WD_i, Max_WD_i)
 problem.buildLinModel()
 problem.updateModel()
 problem.solveModel()
@@ -66,7 +42,7 @@ modelImprovable = True
 reached_max_itr = False
 
 # Get Starting Solutions
-problem_start = Problem(data, demand_dict, eps)
+problem_start = Problem(data, Demand_Dict, eps, Min_WD_i, Max_WD_i)
 problem_start.buildLinModel()
 problem_start.model.Params.MIPFocus = 1
 problem_start.model.Params.Heuristics = 1
@@ -140,7 +116,7 @@ while True:
         modelImprovable = False
         for index in I:
             # Build SP
-            subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps)
+            subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps, Min_WD_i, Max_WD_i)
             subproblem.buildModel()
 
             # Save time to solve SP

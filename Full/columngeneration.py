@@ -142,11 +142,11 @@ while True:
         master.solveRelaxModel()
         objValHistRMP.append(master.model.objval)
 
-        # Get Duals
+        # Get and Print Duals
         duals_i = master.getDuals_i()
         duals_ts = master.getDuals_ts()
-        print(f"DualsI: {duals_i}")
-        print(f"DualsTs: {duals_ts}")
+        #print(f"DualsI: {duals_i}")
+        #print(f"DualsTs: {duals_ts}")
 
         # Save current optimality gap
         gap_rc = round(((round(master.model.objval, 3) - round(obj_val_problem, 3)) / round(master.model.objval, 3)), 3)
@@ -155,6 +155,7 @@ while True:
         # Solve SPs
         modelImprovable = False
         for index in I:
+            print("*{:^{output_len}}*".format(f"Begin Column Generation Iteration {itr}", output_len=output_len))
 
             # Build SP
             subproblem = Subproblem(duals_i, duals_ts, data, index, itr, eps, Min_WD_i, Max_WD_i)
@@ -210,7 +211,7 @@ while True:
         avg_sp_time.append(avg_time)
         timeHist.clear()
 
-        print("*{:^{output_len}}*".format(f"End CG iteration {itr}", output_len=output_len))
+        print("*{:^{output_len}}*".format(f"End Column Generation Iteration {itr}", output_len=output_len))
 
         if not modelImprovable:
             master.model.write("Final_LP.sol")
@@ -237,22 +238,14 @@ objValHistRMP.append(master.model.objval)
 # Capture total time and objval
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval
-print(f" Final IP: {objValHistRMP[-1]}")
-print(f" Final LP: {objValHistRMP[-2]}")
 
 # Calculate Gap
 # Relative to the lower bound (best possible achievable solution)
 gap = ((objValHistRMP[-1]-objValHistRMP[-2])/objValHistRMP[-2])*100
-print(f"Gap: {round(gap,4)}%")
 
 # Lagragian Bound
 # Only yields feasible results if the SPs are solved to optimality
 lagranigan_bound = round((objValHistRMP[-2] + sum_rc_hist[-1]), 3)
-if round(lagranigan_bound, 2) == round(objValHistRMP[-1], 2):
-    print(f"Optimal Solution found ;)")
-else:
-    print(f"No optimal solution found :(")
-  
 
 # Print Results
 printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2], lagranigan_bound, obj_val_problem)
@@ -260,10 +253,4 @@ printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValH
 # Plots
 plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
-#print(Perf_schedules)
 performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T), 'perf_over_time')
-
-print(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr))
-# Rest
-#dicts = create_perf_dict(plotPerformanceList(master.printLambdas(), X1_schedules, I ,max_itr), len(I), len(T), len(K))
-#print(dicts)

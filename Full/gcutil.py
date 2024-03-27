@@ -10,7 +10,7 @@ def printResults(itr, total_time, time_problem, nr, optimal_ip, optimal_lp, lagr
     print("*{:^{nr}}*".format("Total elapsed time: " + str(round((total_time), 4)) + " seconds", nr=nr))
     print("*{:^{nr}}*".format("Final Integer Column Generation solution: " + str(round(optimal_ip, 4)), nr=nr))
     print("*{:^{nr}}*".format("Final Compact solution: " + str(round(compact_obj, 4)), nr=nr))
-    print("*{:^{nr}}*".format("Relative Difference: " + str(round((optimal_ip-compact_obj)/compact_obj, 2))+ "%", nr=nr))
+    print("*{:^{nr}}*".format("Relative Difference: " + str(round((optimal_ip-compact_obj)/compact_obj, 2)*100)+ "%", nr=nr))
 
     print("*{:^{nr}}*".format("", nr=nr))
     print("*{:^{nr}}*".format("The LP Relaxation (Lower Bound) is: " + str(round(optimal_lp, 4)), nr=nr))
@@ -21,7 +21,7 @@ def printResults(itr, total_time, time_problem, nr, optimal_ip, optimal_lp, lagr
         print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
     else:
         print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
-        print("*{:^{nr}}*".format("Column Generation does not provide the global optimal solution!", nr=nr))
+        print("*{:^{nr}}*".format("Column Generation does not prove or provide the global optimal solution!", nr=nr))
     print("*{:^{nr}}*".format("", nr=nr))
     print("*{:^{nr}}*".format("Solving Times:", nr=nr))
     print("*{:^{nr}}*".format(f"Time Column Generation: {round(total_time, 4)} seconds", nr=nr))

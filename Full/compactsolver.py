@@ -103,7 +103,7 @@ class Problem:
                 self.model.addLConstr(gu.quicksum(self.rho[i, t, k] for k in self.K) == self.sc[i, t])
         self.model.update()
 
-    def genRegCons(self):
+    def genRegConsIndivudal(self):
         for i in self.I:
             for t in range(1, len(self.T) - self.Max_WD_i[i] + 1):
                 self.model.addLConstr(
@@ -111,6 +111,25 @@ class Problem:
             for t in range(2, len(self.T) - self.Min_WD_i[i] + 1):
                 self.model.addLConstr(
                     gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD_i[i] + 1)) >= self.Min_WD_i[i] * (
+                                self.y[i, t + 1] - self.y[i, t]))
+        for i in self.I:
+            for t in range(2, len(self.T) - self.Days_Off + 2):
+                for s in range(t + 1, t + self.Days_Off):
+                    self.model.addLConstr(1 + self.y[i, t] >= self.y[i, t - 1] + self.y[i, s])
+        for i in self.I:
+            for k1, k2 in self.F_S:
+                for t in range(1, len(self.T)):
+                    self.model.addLConstr(self.x[i, t, k1] + self.x[i, t + 1, k2] <= 1)
+        self.model.update()
+
+    def genRegCons(self):
+        for i in self.I:
+            for t in range(1, len(self.T) - self.Max_WD + 1):
+                self.model.addLConstr(
+                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
+            for t in range(2, len(self.T) - self.Min_WD + 1):
+                self.model.addLConstr(
+                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
                                 self.y[i, t + 1] - self.y[i, t]))
         for i in self.I:
             for t in range(2, len(self.T) - self.Days_Off + 2):

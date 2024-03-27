@@ -30,6 +30,14 @@ class Subproblem:
     def buildModel(self):
         self.generateVariables()
         self.generateConstraints()
+        self.generateRegConstraints2()
+        self.generateObjective()
+        self.model.update()
+
+    def buildIndividualModel(self):
+        self.generateVariables()
+        self.generateConstraints()
+        self.generateRegConstraints()
         self.generateObjective()
         self.model.update()
 
@@ -84,14 +92,6 @@ class Subproblem:
                 self.model.addLConstr(1 == gu.quicksum(self.x[i, t, k] for k in self.shifts) + (1 - self.y[i, t]))
                 self.model.addLConstr(gu.quicksum(self.rho[i, t, k] for k in self.shifts) == self.sc[i, t])
         for i in [self.index]:
-            for t in range(1, len(self.days) - self.Max_WD_i[i] + 1):
-                self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD_i[i])) <= self.Max_WD_i[i])
-            for t in range(2, len(self.days) - self.Min_WD_i[i] + 1):
-                self.model.addLConstr(
-                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD_i[i] + 1)) >= self.Min_WD_i[i] * (
-                            self.y[i, t + 1] - self.y[i, t]))
-        for i in [self.index]:
             for t in range(2, len(self.days) - self.Days_Off + 2):
                 for s in range(t + 1, t + self.Days_Off):
                     self.model.addLConstr(1 + self.y[i, t] >= self.y[i, t - 1] + self.y[i, s])
@@ -136,6 +136,29 @@ class Subproblem:
                 self.model.addLConstr(self.b[i, t] <= self.e[i, t])
                 self.model.addLConstr(self.b[i, t] <= self.r[i, t])
                 self.model.addLConstr(self.b[i, t] >= self.e[i, t] + self.r[i, t] - 1)
+        self.model.update()
+
+    def generateRegConstraints(self):
+        for i in [self.index]:
+            for t in range(1, len(self.days) - self.Max_WD_i[i] + 1):
+                self.model.addLConstr(
+                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD_i[i])) <= self.Max_WD_i[i])
+            for t in range(2, len(self.days) - self.Min_WD_i[i] + 1):
+                self.model.addLConstr(
+                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD_i[i] + 1)) >= self.Min_WD_i[i] * (
+                            self.y[i, t + 1] - self.y[i, t]))
+        self.model.update()
+
+    def generateRegConstraints2(self):
+        for i in [self.index]:
+            for t in range(1, len(self.days) - self.Max_WD + 1):
+                self.model.addLConstr(
+                    gu.quicksum(self.y[i, u] for u in range(t, t + 1 + self.Max_WD)) <= self.Max_WD)
+            for t in range(2, len(self.days) - self.Min_WD + 1):
+                self.model.addLConstr(
+                    gu.quicksum(self.y[i, u] for u in range(t + 1, t + self.Min_WD + 1)) >= self.Min_WD * (
+                            self.y[i, t + 1] - self.y[i, t]))
+        self.model.update()
 
     def generateObjective(self):
         self.model.setObjective(

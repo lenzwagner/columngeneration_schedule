@@ -1,9 +1,15 @@
 import pandas as pd
 import numpy as np
+import os
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.transforms import offset_copy
 
-def violinplots(list_cg, list_compact):
+def violinplots(list_cg, list_compact, name):
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
+
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
     df = pd.DataFrame(list_cg, columns=['Time'])
@@ -25,17 +31,29 @@ def violinplots(list_cg, list_compact):
     axs[1].set_title("Compact Solver")
 
     plt.legend()
+    plt.savefig(plot_path, format='png')
+
     plt.show()
 
-def optBoxplot(vals):
+def optBoxplot(vals, name):
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
+
     df = pd.DataFrame(sorted(vals), columns=['Gap'])
     mean_val = np.mean(df)
     plt.axvline(x=mean_val, color='red', linestyle='--', label='Mean')
     sns.boxplot(x=df["Gap"])
     plt.title("Optimality Gap in %")
+    plt.savefig(plot_path, format='png')
+
     plt.show()
 
-def pie_chart(optimal):
+def pie_chart(optimal, name):
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
+
     zeros = sum(value == 0 for value in optimal.values())
     ones = sum(value == 1 for value in optimal.values())
 
@@ -48,10 +66,15 @@ def pie_chart(optimal):
     plt.xlabel('')
     plt.title("Optimality Distribution")
     plt.legend(labels=['Yes', 'No'], loc='lower right', bbox_to_anchor=(1.0, 0.3), title = "Optimal Solution?")
+    plt.savefig(plot_path, format='png')
 
     plt.show()
 
-def medianplots(list_cg, list_compact):
+def medianplots(list_cg, list_compact, name):
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
+
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
     df = pd.DataFrame(list_cg, columns=['Time'])
@@ -71,45 +94,49 @@ def medianplots(list_cg, list_compact):
 
     axs[1].axvline(median_compact, color='r', linestyle='--', label='Median')
     axs[1].text(median_compact, axs[1].get_ylim()[1], f'{median_compact}', ha='center', va='top', backgroundcolor='white')
-
     plt.legend()
+
+    plt.savefig(plot_path, format='png')
     plt.show()
 
-def performancePlot(p_list, days, name):
-    file = str(name)
-    file_name = f'./images/' + file + '.png'
-
+def performancePlot(ls, days, phys_nr, name):
     sns.set(style='darkgrid')
-    phys_nr = len(p_list) // days
 
-    phys_list = [p_list[i * days:(i + 1) * days] for i in range(phys_nr)]
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
 
-    data = {'Day': list(range(1, days + 1))}
-    for idx, phys in enumerate(phys_list):
-        data[f'{idx + 1}'] = phys
 
-    df = pd.DataFrame(data)
-    df_melted = df.melt('Day', var_name='Phys', value_name='Performance')
+    grid = list(range(1, days + 1))
+    graphs = [ls[i:i+days] for i in range(0, len(ls), 14)]
 
+    fig, ax = plt.subplots()
+
+    lw = 1.5
     palette = sns.color_palette("rocket", phys_nr)
-    plt.xticks(range(1, days + 1))
+    for gg, graph in enumerate(graphs, start=1):
+        trans_offset = offset_copy(ax.transData, fig=fig, x=lw * gg, y=lw * gg, units='dots')
+        ax.plot(grid, graph, lw=lw, transform=trans_offset, label=gg, color=palette[gg-1], alpha = 0.6)
 
-    sns.lineplot(data=df_melted, x='Day', y='Performance', hue='Phys', style='Phys', markers=True,
-                 dashes=True, alpha=0.8, palette=palette, linewidth=1.5, zorder=3)
+    ax.legend(loc='upper left', bbox_to_anchor=(0.01, 0.35), title='Physician')
+    # manually set the axes limits, because the transform doesn't set them automatically
+    ax.set_xlim(grid[0] - .5, grid[-1] + .5)
+    ax.set_ylim(min([min(g) for g in graphs]) - .02, max([max(g) for g in graphs]) + .02)
 
     plt.xlabel('Day')
     plt.ylabel('Performance')
     plt.title('Physician Performance over Time')
-    plt.legend(title='Physician')
+    plt.xticks(range(1, days + 1))
 
-    plt.savefig(file_name, format='png')
+    plt.savefig(plot_path, format='png')
 
     plt.show()
 
 
 def plot_obj_val(objValHistRMP, name):
-    file = str(name)
-    file_name = f'./images/' + file + '.png'
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
 
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(len(objValHistRMP[:-1]))), y=objValHistRMP[:-1], marker='o', color='#3c4cad',
@@ -130,12 +157,13 @@ def plot_obj_val(objValHistRMP, name):
     plt.legend(h[:2], l[:2] + ['Last Point'], loc='best', handletextpad=0.1, handlelength=1, fontsize='medium',
                title='Legend')
 
-    plt.savefig(file_name, format='png')
+    plt.savefig(plot_path, format='png')
     plt.show()
 
 def plot_avg_rc(avg_rc_hist, name):
-    file = str(name)
-    file_name = f'./images/' + file + '.png'
+    file_dir = f'.\images'
+    file_name = str(name) + '.png'
+    plot_path = os.path.join(file_dir, file_name)
 
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(1, len(avg_rc_hist) + 1)), y=avg_rc_hist, marker='o', color='#3c4cad')
@@ -146,5 +174,5 @@ def plot_avg_rc(avg_rc_hist, name):
     title = 'Final reduced cost: ' + str(round(avg_rc_hist[-1], 2))
     plt.title(title)
 
-    plt.savefig(file_name, format='png')
+    plt.savefig(plot_path, format='png')
     plt.show()

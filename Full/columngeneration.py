@@ -253,4 +253,5 @@ printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValH
 # Plots
 plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
-performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T), 'perf_over_time')
+performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T), len(I), 'perf_over_time')
+print(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr))

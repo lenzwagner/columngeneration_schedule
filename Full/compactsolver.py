@@ -4,7 +4,7 @@ import random
 import math
 from setup import *
 import numpy as np
-from plots import *
+from test import *
 
 class Problem:
     def __init__(self, dfData, DemandDF, eps, Min_WD_i, Max_WD_i):
@@ -251,6 +251,14 @@ problem_t0 = time.time()
 problem = Problem(data, demand_dict, eps, Min_WD_i, Max_WD_i)
 problem.buildLinModel()
 problem.updateModel()
+problem.model.Params.LogFile = "./test.log"
 problem.solveModel()
 
-optimalityplot()
+file='./test.log'
+
+results, timeline = glt.get_dataframe([file], timelines=True)
+
+# Plot
+default_run = timeline["nodelog"]
+
+plot(default_run)

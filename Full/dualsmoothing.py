@@ -4,9 +4,8 @@ import time
 import matplotlib.pyplot as plt
 from masterproblem import *
 import seaborn as sns
-import random
 from subproblem import *
-from compactsolver import *
+from compactsolver import Problem
 
 # Set of indices
 I, T, K = [1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], [1, 2, 3]

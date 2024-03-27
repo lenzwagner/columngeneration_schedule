@@ -3,7 +3,7 @@ from plots import *
 from setup import *
 from gcutil import *
 from subproblem import *
-from compactsolver import *
+from compactsolver import Problem
 
 # **** Prerequisites ****
 # Create Dataframes

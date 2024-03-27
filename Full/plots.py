@@ -2,16 +2,16 @@ import numpy as np
 import os
 from matplotlib.transforms import offset_copy
 import seaborn as sns
-from pathlib import Path
+from matplotlib.ticker import PercentFormatter, MaxNLocator
+import itertools
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import gurobi_logtools as glt
 
 def violinplots(list_cg, list_compact, name):
-    file_dir = f'.\images'
-    file_name = str(name) + '.png'
-    plot_path = os.path.join(file_dir, file_name)
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
 
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
@@ -34,28 +34,26 @@ def violinplots(list_cg, list_compact, name):
     axs[1].set_title("Compact Solver")
 
     plt.legend()
-    plt.savefig(plot_path, format='png')
+    plt.savefig(file_name, format='png')
 
     plt.show()
 
 def optBoxplot(vals, name):
-    file_dir = f'.\images'
-    file_name = str(name) + '.png'
-    plot_path = os.path.join(file_dir, file_name)
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
 
     df = pd.DataFrame(sorted(vals), columns=['Gap'])
     mean_val = np.mean(df)
     plt.axvline(x=mean_val, color='red', linestyle='--', label='Mean')
     sns.boxplot(x=df["Gap"])
     plt.title("Optimality Gap in %")
-    plt.savefig(plot_path, format='png')
+    plt.savefig(file_name, format='png')
 
     plt.show()
 
 def pie_chart(optimal, name):
-    file_dir = f'.\images'
-    file_name = str(name) + '.png'
-    plot_path = os.path.join(file_dir, file_name)
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
 
     zeros = sum(value == 0 for value in optimal.values())
     ones = sum(value == 1 for value in optimal.values())
@@ -69,14 +67,13 @@ def pie_chart(optimal, name):
     plt.xlabel('')
     plt.title("Optimality Distribution")
     plt.legend(labels=['Yes', 'No'], loc='lower right', bbox_to_anchor=(1.0, 0.3), title = "Optimal Solution?")
-    plt.savefig(plot_path, format='png')
+    plt.savefig(file_name, format='png')
 
     plt.show()
 
 def medianplots(list_cg, list_compact, name):
-    file_dir = f'.\images'
-    file_name = str(name) + '.png'
-    plot_path = os.path.join(file_dir, file_name)
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
 
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
@@ -99,15 +96,14 @@ def medianplots(list_cg, list_compact, name):
     axs[1].text(median_compact, axs[1].get_ylim()[1], f'{median_compact}', ha='center', va='top', backgroundcolor='white')
     plt.legend()
 
-    plt.savefig(plot_path, format='png')
+    plt.savefig(file_name, format='png')
     plt.show()
 
 def performancePlot(ls, days, phys_nr, name):
     sns.set(style='darkgrid')
 
-    file_dir = f'.\images'
-    file_name = str(name) + '.png'
-    plot_path = os.path.join(file_dir, file_name)
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
 
 
     grid = list(range(1, days + 1))
@@ -131,15 +127,14 @@ def performancePlot(ls, days, phys_nr, name):
     plt.title('Physician Performance over Time')
     plt.xticks(range(1, days + 1))
 
-    plt.savefig(plot_path, format='png')
+    plt.savefig(file_name, format='png')
 
     plt.show()
 
 
 def plot_obj_val(objValHistRMP, name):
-    file_dir = f'.\images'
-    file_name = str(name) + '.png'
-    plot_path = os.path.join(file_dir, file_name)
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
 
     sns.set(style='darkgrid')
     sns.scatterplot(x=list(range(len(objValHistRMP[:-1]))), y=objValHistRMP[:-1], marker='o', color='#3c4cad',
@@ -160,11 +155,11 @@ def plot_obj_val(objValHistRMP, name):
     plt.legend(h[:2], l[:2] + ['Last Point'], loc='best', handletextpad=0.1, handlelength=1, fontsize='medium',
                title='Legend')
 
-    plt.savefig(plot_path, format='png')
+    plt.savefig(file_name, format='png')
     plt.show()
 
 def plot_avg_rc(avg_rc_hist, name):
-    file_dir = f'.\images'
+    file_dir = 'images'
     file_name = str(name) + '.png'
     plot_path = os.path.join(file_dir, file_name)
 
@@ -195,3 +190,65 @@ def optimality_plot(file):
     fig.update_xaxes(title="Runtime")
     fig.update_yaxes(title="Obj Val")
     fig.show()
+
+def combine_legends(*axes):
+    handles = list(itertools.chain(*[ax.get_legend_handles_labels()[0] for ax in axes]))
+    labels = list(
+        itertools.chain(*[ax3.get_legend_handles_labels()[1] for ax3 in axes])
+    )
+    return handles, labels
+
+
+def set_obj_axes_labels(ax):
+    ax.set_ylabel("Objective value")
+    ax.set_xlabel("Iterations")
+
+
+def plot_obj(df, ax):
+    ax.step(
+        list(range(len(df))),
+        df,
+        where="post",
+        color="b",
+        label="Obj",
+    )
+    set_obj_axes_labels(ax)
+
+def plot_gap(df1, ax):
+    ax.step(
+        list(range(len(df1))),
+        df1,
+        where="post",
+        color="green",
+        label="Gap",
+    )
+    ax.set_ylabel("Optimality Gap in %")
+    ax.set_ylim(0, 1)
+    formatter = PercentFormatter(1)
+    ax.yaxis.set_major_formatter(formatter)
+
+
+def optimalityplot(df, df2, last_itr, name):
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
+
+    with plt.style.context("seaborn-v0_8"):
+        _, ax = plt.subplots(figsize=(8, 5))
+
+        plot_obj(df, ax)
+
+        ax2 = ax.twinx()
+        plot_gap(df2, ax2)
+
+        ax.set_xlim(0, last_itr-2)
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        print(combine_legends(ax, ax2))
+        ax.legend(*combine_legends(ax, ax2))
+
+        plt.savefig(file_name, format='png')
+
+        plt.show()

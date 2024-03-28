@@ -175,14 +175,7 @@ def plot_avg_rc(avg_rc_hist, name):
     plt.savefig(plot_path, format='png')
     plt.show()
 
-def optimality_plot(file):
-    pd.set_option('display.max_columns', None)
-    results, timeline = glt.get_dataframe([file], timelines=True)
-
-    # Plot
-    default_run = timeline["nodelog"]
-    print(default_run["Time"])
-
+def optimality_plot(default_run):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=default_run["Time"], y=default_run["Incumbent"], name="Primal Bound"))
     fig.add_trace(go.Scatter(x=default_run["Time"], y=default_run["BestBd"], name="Dual Bound"))

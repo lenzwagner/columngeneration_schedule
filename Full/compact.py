@@ -3,7 +3,10 @@ import time
 import random
 from setup import *
 import numpy as np
+from plots import optimality_plot
 from test import *
+
+I, T, K = list(range(1,26)), list(range(1,15)), [1, 2, 3]
 
 # **** Solve ****
 data = pd.DataFrame({
@@ -12,6 +15,12 @@ data = pd.DataFrame({
     'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
 })
 
+# Remove unused files
+for file in os.listdir():
+    if file.endswith('.lp') or file.endswith('.sol') or file.endswith('.log'):
+        os.remove(file)
+
+# Demand
 random.seed()
 def generate_cost(num_days, phys, K):
     cost = {}
@@ -40,6 +49,7 @@ problem = Problem(data, demand_dict, eps, Min_WD_i, Max_WD_i)
 problem.buildLinModel()
 problem.updateModel()
 problem.model.Params.LogFile = "./test.log"
+problem.model.Params.TimeLimit = time_Limit
 problem.model.optimize()
 
 file='./test.log'
@@ -51,4 +61,4 @@ default_run = timeline["nodelog"]
 
 print(default_run)
 
-plot(default_run)
+#plot(default_run, 3600, 'opt_pl')

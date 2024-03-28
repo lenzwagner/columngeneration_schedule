@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 import itertools
+import os
 import gurobi_logtools as glt
 
 
@@ -13,8 +14,8 @@ def combine_legends(*axes):
 
 
 def set_obj_axes_labels(ax):
-    ax.set_ylabel("objective value")
-    ax.set_xlabel("time")
+    ax.set_ylabel("Objective value")
+    ax.set_xlabel("Time")
 
 
 def plot_incumbent(df, ax):
@@ -59,13 +60,15 @@ def plot_relgap(df, ax):
         color="green",
         label="Gap",
     )
-    ax.set_ylabel("gap in %")
+    ax.set_ylabel("Optimailty Gap in %")
     ax.set_ylim(0, 1)
     formatter = PercentFormatter(1)
     ax.yaxis.set_major_formatter(formatter)
 
 
-def plot(df):
+def plot(df, limit, name):
+    file = str(name)
+    file_name = f'.{os.sep}images{os.sep}{file}.png'
     with plt.style.context("seaborn-v0_8"):
         _, ax = plt.subplots(figsize=(8, 5))
 
@@ -76,7 +79,8 @@ def plot(df):
         ax2 = ax.twinx()
         plot_relgap(df, ax2)
 
-        ax.set_xlim(1,40)
+        ax.set_xlim(1,limit)
         ax.legend(*combine_legends(ax, ax2))
+        plt.savefig(file_name, format='png')
 
         plt.show()

@@ -39,7 +39,6 @@ class Problem:
         self.Recovery()
         self.linPerformance()
         self.generateObjective()
-        self.ModelParams()
         self.updateModel()
 
 
@@ -192,7 +191,6 @@ class Problem:
         self.model.update()
 
     def ModelParams(self):
-        self.model.Params.OutputFlag = 1
         self.model.setParam('ConcurrentMIP', 2)
 
     def solveModel(self):

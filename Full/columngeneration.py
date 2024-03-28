@@ -14,6 +14,11 @@ data = pd.DataFrame({
     'K': K + [np.nan] * (max(len(I), len(T), len(K)) - len(K))
 })
 
+# Remove unused files
+for file in os.listdir():
+    if file.endswith('.lp') or file.endswith('.sol') or file.endswith('.txt'):
+        os.remove(file)
+
 # Parameter
 random.seed(13333)
 time_Limit = 3600

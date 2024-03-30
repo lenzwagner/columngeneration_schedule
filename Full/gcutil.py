@@ -2,7 +2,11 @@ from itertools import chain
 import random
 
 # **** Print Results Table ****
-def printResults(itr, total_time, time_problem, nr, optimal_ip, optimal_lp, lagranigan_bound, compact_obj):
+def printResults(itr, total_time, time_problem, nr, optimal_ip, optimal_lp, lagranigan_bound, compact_obj, step):
+    lb = analytical_lb(optimal_lp, step, optimal_ip)
+    gap_percentage = round((optimal_ip - compact_obj) / compact_obj, 2) * 100
+    gap_percentage_str = str(gap_percentage) if gap_percentage != -0.0 else "0.0"
+
     print("*" * (nr + 2))
     print("*{:^{nr}}*".format("******* Results *******", nr=nr))
     print("*{:^{nr}}*".format("", nr=nr))
@@ -10,17 +14,18 @@ def printResults(itr, total_time, time_problem, nr, optimal_ip, optimal_lp, lagr
     print("*{:^{nr}}*".format("Total elapsed time: " + str(round((total_time), 4)) + " seconds", nr=nr))
     print("*{:^{nr}}*".format("Final Integer Column Generation solution: " + str(round(optimal_ip, 4)), nr=nr))
     print("*{:^{nr}}*".format("Final Compact solution: " + str(round(compact_obj, 4)), nr=nr))
-    print("*{:^{nr}}*".format("Relative Difference: " + str(round((optimal_ip-compact_obj)/compact_obj, 2)*100)+ "%", nr=nr))
+    print("*{:^{nr}}*".format("IP-Optimality Gap: " + gap_percentage_str+ "%", nr=nr))
 
     print("*{:^{nr}}*".format("", nr=nr))
     print("*{:^{nr}}*".format("The LP Relaxation (Lower Bound) is: " + str(round(optimal_lp, 4)), nr=nr))
+    print("*{:^{nr}}*".format("The Analytical Lower Bound is: " + str(round(lb, 4)), nr=nr))
     print("*{:^{nr}}*".format("The Lagrangian Bound is: " + str(round(lagranigan_bound, 4)), nr=nr))
     gap = round((((optimal_ip-optimal_lp) / optimal_lp) * 100),3)
     gap_str = f"{gap}%"
     if gap == 0:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
+        print("*{:^{nr}}*".format("LP-Optimality GAP: " + str(gap_str), nr=nr))
     else:
-        print("*{:^{nr}}*".format("The Optimality-GAP is " + str(gap_str), nr=nr))
+        print("*{:^{nr}}*".format("LP-Optimality GAP: " + str(gap_str), nr=nr))
         print("*{:^{nr}}*".format("Column Generation does not prove or provide the global optimal solution!", nr=nr))
     print("*{:^{nr}}*".format("", nr=nr))
     print("*{:^{nr}}*".format("Solving Times:", nr=nr))
@@ -228,3 +233,12 @@ def create_individual_working_list(phys, min_val, max_val, mean_val):
         random_list.append(random_value)
 
     return random_list
+
+def analytical_lb(optimal_lp, step, optimal_ip):
+    current_value = optimal_ip
+    while current_value > optimal_lp:
+        current_value -= step
+        if current_value <= optimal_lp:
+            return current_value + step
+    return optimal_ip
+

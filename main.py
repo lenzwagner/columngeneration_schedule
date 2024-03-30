@@ -34,7 +34,7 @@ demand_dict = {(1, 1): 2, (1, 2): 1, (1, 3): 0, (2, 1): 1, (2, 2): 2, (2, 3): 0,
 # Generate Alpha's
 def gen_alpha(seed):
     random.seed(seed)
-    alpha = {(i, t): round(random.random(), 3) for i in I for t in T}
+    alpha = {(t): round(random.random(), 3) for t in T}
     return alpha
 
 
@@ -248,7 +248,7 @@ class Subproblem:
     def generateConstraints(self):
         for i in [self.index]:
             for t in self.days:
-                self.model.addLConstr(1 - self.alpha[i, t] == self.mood[i, t])
+                self.model.addLConstr(1 - self.alpha[t] == self.mood[i, t])
                 self.model.addLConstr(self.y[i, t] == gu.quicksum(self.x[i, t, s] for s in self.shifts))
                 self.model.addLConstr(gu.quicksum(self.x[i, t, s] for s in self.shifts) <= 1)
                 for s in self.shifts:
@@ -329,7 +329,7 @@ class Problem:
                     gu.quicksum(self.motivation[i, t, s,] for i in self.I) + self.slack[t, s] >= self.demand[t, s])
         for i in self.I:
             for t in self.T:
-                self.model.addLConstr(self.mood[i, t] == 1 - self.alpha[i, t])
+                self.model.addLConstr(self.mood[i, t] == 1 - self.alpha[t])
                 self.model.addLConstr(quicksum(self.x[i, t, s] for s in self.K) == self.y[i, t])
                 self.model.addLConstr(gu.quicksum(self.x[i, t, s] for s in self.K) <= 1)
                 for s in self.K:
@@ -498,6 +498,7 @@ while True:
         # Solve RMP
         master.current_iteration = itr + 1
         master.solveRelaxModel()
+        master.model.write(f'Itr{itr}.sol')
         objValHistRMP.append(master.model.objval)
         print("*{:^{output_len}}*".format(f"Current RMP ObjVal: {objValHistRMP}", output_len=output_len))
 
@@ -587,7 +588,7 @@ while True:
 
 # Solve Master Problem with integrality restored
 master.finalSolve()
-
+master.model.write(f'final.sol')
 # Capture total time and objval
 total_time_cg = time.time() - t0
 final_obj_cg = master.model.objval

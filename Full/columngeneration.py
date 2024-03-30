@@ -20,7 +20,7 @@ for file in os.listdir():
         os.remove(file)
 
 # Parameter
-random.seed(13333)
+random.seed(13338)
 time_Limit = 3600
 max_itr = 20
 output_len = 98
@@ -254,10 +254,9 @@ gap = ((objValHistRMP[-1]-objValHistRMP[-2])/objValHistRMP[-2])*100
 lagranigan_bound = round((objValHistRMP[-2] + sum_rc_hist[-1]), 3)
 
 # Print Results
-printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2], lagranigan_bound, obj_val_problem)
+printResults(itr, total_time_cg, time_problem, output_len, final_obj_cg, objValHistRMP[-2], lagranigan_bound, obj_val_problem, eps)
 
 # Plots
 plot_obj_val(objValHistRMP, 'obj_val_plot')
 plot_avg_rc(avg_rc_hist, 'rc_vals_plot')
 performancePlot(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr), len(T), len(I), 'perf_over_time')
-print(plotPerformanceList(master.printLambdas(), P_schedules, I ,max_itr))

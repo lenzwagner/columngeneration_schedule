@@ -183,7 +183,6 @@ class Problem:
                 self.model.addLConstr(self.b[i, t] >= self.e[i, t] + self.r[i, t] - 1)
         self.model.update()
 
-
     def generateObjective(self):
         self.model.setObjective(gu.quicksum(self.u[t, k] for k in self.K for t in self.T), sense=gu.GRB.MINIMIZE)
 
@@ -196,6 +195,7 @@ class Problem:
     def solveModel(self):
         self.t1 = time.time()
         try:
+            self.model.Params.MIPGap = 0
             self.model.optimize()
         except gu.GurobiError as e:
             print('Error code ' + str(e.errno) + ': ' + str(e))

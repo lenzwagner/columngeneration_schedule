@@ -38,7 +38,7 @@ demand_dict = generate_cost(len(T), len(I), len(K))
 
 # Parameter
 time_Limit = 3600
-max_itr = 25
+max_itr = 30
 output_len = 98
 mue = 1e-4
 eps = 0.18

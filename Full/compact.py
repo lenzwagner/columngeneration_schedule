@@ -6,7 +6,7 @@ import numpy as np
 from plots import optimality_plot
 from test import *
 
-I, T, K = list(range(1,26)), list(range(1,15)), [1, 2, 3]
+I, T, K = list(range(1,16)), list(range(1,29)), [1, 2, 3]
 
 # **** Solve ****
 data = pd.DataFrame({
@@ -34,7 +34,7 @@ def generate_cost(num_days, phys, K):
         cost[(day, shifts[-1])] = num_costs
     return cost
 
-demand_dict = generate_cost(14, len(I), len(K))
+demand_dict = generate_cost(len(T), len(I), len(K))
 
 # Parameter
 time_Limit = 3600
